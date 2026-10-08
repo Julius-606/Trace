@@ -5,7 +5,7 @@ This guide helps you run and test the Trace Learning Backend on your local machi
 
 ## 1. Prerequisites
 - **Python 3.14+** (Already installed in your project folder)
-- **.env file**: Ensure your `backend/.env` has the `GEMINI_API_KEYS` (I have already updated this for you).
+- **.env file**: Put all local secrets in one `backend/.env` file. Copy `backend/.env.example` and set `TRACE_DATABASE_URL`, `ORBIT_DATABASE_URL`, and `DEBATEHUB_NEON_DATABASE_URL` independently.
 
 ## 2. Starting the Server
 You can now easily switch between the new **Modular** version and the **Legacy** version.
@@ -40,7 +40,8 @@ python mock_app_test.py
 ## 4. Troubleshooting
 - **PostgreSQL / Neon SSL Error (`SSL error: unexpected eof while reading`)**:
   - The Neon free-tier serverless pooler automatically scales down to zero when idle. If a connection closes unexpectedly, the backend now includes **automatic fallback to SQLite** (`edu_ai_vault.db`) so your server never crashes.
-  - To test with local SQLite directly without touching remote Neon, set `DATABASE_URL=sqlite:///./edu_ai_vault.db` in your `backend/.env` file.
+  - To test Trace with local SQLite directly without touching remote Neon, set `TRACE_DATABASE_URL=sqlite:///./edu_ai_vault.db` in `backend/.env`.
+  - Orbit uses its own local fallback database when `ORBIT_DATABASE_URL=sqlite:///./orbit_vault.db`.
   - If connecting to Neon, make sure your connection string uses endpoint pooler mode with `?sslmode=require`.
 
 - **Hugging Face Container Health Check (`500 on /?logs=container`)**:

@@ -44,7 +44,9 @@ To run this project, you must configure the following secrets/environment variab
 
 | Variable | Description |
 | :--- | :--- |
-| `DATABASE_URL` | Neon.tech PostgreSQL connection string. |
+| `TRACE_DATABASE_URL` | Trace's Neon.tech PostgreSQL connection string. |
+| `ORBIT_DATABASE_URL` | Orbit's separate Neon.tech PostgreSQL connection string. |
+| `DEBATEHUB_NEON_DATABASE_URL` | DebateHub's separate Neon.tech PostgreSQL connection string. |
 | `INTERNAL_API_KEY` | Shared backend/app API key sent as `X-Internal-Api-Key`. Must match the Android build property. |
 | `JWT_SECRET_KEY` | Secret used to sign login tokens. Keep this stable across deploys or existing sessions will be logged out. |
 | `GEMINI_API_KEY_1` | Primary Google Gemini API Key. |
@@ -74,7 +76,7 @@ To run this project, you must configure the following secrets/environment variab
 
 4. **Run the Server:**
    ```bash
-   uvicorn main:app --reload
+   bash run_monorepo.sh
    ```
 
 ---

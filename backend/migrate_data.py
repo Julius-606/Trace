@@ -13,10 +13,10 @@ load_dotenv()
 
 # Configuration
 SQLITE_DB_PATH = "edu_ai_vault.db"
-POSTGRES_URL = os.getenv("DATABASE_URL")
+POSTGRES_URL = os.getenv("TRACE_DATABASE_URL")
 
 if not POSTGRES_URL:
-    print("❌ Error: DATABASE_URL not found in .env file.")
+    print("❌ Error: TRACE_DATABASE_URL not found in .env file.")
     exit(1)
 
 # Fix for Neon/Heroku: SQLAlchemy requires 'postgresql://' instead of 'postgres://'

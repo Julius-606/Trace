@@ -17,16 +17,19 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, FileResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.db.session import engine, Base, get_db
+from app.db.orbit_session import initialize_orbit_database
 from app.api import auth, users, ai, teacher, parent, learning, admin
+from app.api.v1.api import api_router as orbit_api_router
 from app.core import security
 from app.models import database_models as models
 from app.schemas import api_schemas as schemas
 from typing import List, Optional, Dict, Any
+import httpx
 try:
     import ingestion_engine
 except ImportError:
@@ -163,6 +166,68 @@ except Exception as e:
 
 app = FastAPI(title="Trace Modular API", version="3.0.0")
 
+
+@app.on_event("startup")
+async def initialize_orbit_schema():
+    try:
+        await initialize_orbit_database()
+        logger.info("Orbit database schema verified successfully.")
+    except Exception as exc:
+        logger.warning("Orbit database schema initialization deferred: %s", exc)
+
+DEBATEHUB_INTERNAL_URL = os.getenv("DEBATEHUB_INTERNAL_URL", "http://127.0.0.1:3000")
+
+@app.api_route(
+    "/DebateHub",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/DebateHub/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+async def debatehub_proxy(request: Request, path: str = ""):
+    """Forward DebateHub traffic to its independent internal Express service."""
+    target = f"{DEBATEHUB_INTERNAL_URL}/{path}" if path else f"{DEBATEHUB_INTERNAL_URL}/"
+    if request.url.query:
+        target = f"{target}?{request.url.query}"
+
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    body = await request.body()
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            upstream = await client.request(
+                request.method,
+                target,
+                headers=headers,
+                content=body,
+            )
+        excluded = {"content-encoding", "content-length", "transfer-encoding", "connection"}
+        response_headers = {
+            key: value
+            for key, value in upstream.headers.items()
+            if key.lower() not in excluded
+        }
+        return Response(
+            content=upstream.content,
+            status_code=upstream.status_code,
+            headers=response_headers,
+            media_type=upstream.headers.get("content-type"),
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("DebateHub proxy request failed for %s: %s", target, exc)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "service": "DebateHub",
+                "status": "unavailable",
+                "detail": "The independent DebateHub service is not ready.",
+            },
+        )
+
 class HFSpacePrefixMiddleware:
     def __init__(self, app):
         self.app = app
@@ -296,6 +361,7 @@ app.include_router(ai.router, prefix="/api")
 app.include_router(teacher.router, prefix="/api")
 app.include_router(parent.router, prefix="/api")
 app.include_router(learning.router, prefix="/api")
+app.include_router(orbit_api_router, prefix="/api/v1")
 
 # ==============================================================================
 # Web App Module (React Frontend Embedded Directly in FastAPI Backend)
@@ -366,6 +432,11 @@ def root(request: Request, db: Session = Depends(get_db)):
         "admin/login.html",
         {"request": request, "version": admin.BACKEND_VERSION, "error": None}
     )
+
+@app.get("/orbit", include_in_schema=False)
+async def orbit_entrypoint():
+    """Keep Orbit's public entrypoint distinct from Trace's admin home."""
+    return RedirectResponse(url="/docs")
 
 @app.post("/ingest", response_class=HTMLResponse)
 async def handle_ingestion(

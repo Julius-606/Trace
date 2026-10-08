@@ -1,0 +1,53 @@
+################################################################################
+FILE: Orbit/backend/render.yaml
+VERSION: 1.0.0 | SYSTEM: N/A
+################################################################################
+
+################################################################################
+# FILE: backend/render.yaml
+# VERSION: 1.0.0 | SYSTEM: Infrastructure as Code (IaC)
+################################################################################
+#
+# This file tells Render exactly how to build your entire stack.
+# It creates the Postgres DB, Redis instance, and the FastAPI Web Service
+# all connected together automatically. It's basically a setup cheat code.
+
+services:
+  # 1. The Brain (FastAPI Web Service)
+  - type: web
+    name: orbit-api
+    env: docker # We are using the Dockerfile we just updated
+    region: frankfurt # Choose a region close to Kenya for better latency (Frankfurt is usually good)
+    plan: free # Keepin' it free tier for now
+    envVars:
+      # Connect the API to the DBs created below
+      - key: ORBIT_DATABASE_URL
+        fromDatabase:
+          name: orbit-db
+          property: connectionString
+      - key: TRACE_DATABASE_URL
+        sync: false
+      - key: DEBATEHUB_NEON_DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: orbit-redis
+          property: connectionString
+      # Add your API keys here (Render will prompt you for these or you can set them in the dashboard later)
+      # - key: GEMINI_API_KEY
+      #   sync: false
+
+  # 2. The Long-Term Memory (PostgreSQL)
+  - type: pgo
+    name: orbit-db
+    plan: free
+    region: frankfurt
+    # Render manages the Postgres version automatically
+
+  # 3. The Short-Term Memory / Trigger Cache (Redis)
+  - type: redis
+    name: orbit-redis
+    plan: free
+    region: frankfurt
+    ipAllowList: [] # Allow internal Render connections only

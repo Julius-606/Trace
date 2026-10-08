@@ -1,15 +1,16 @@
 
 import os
 import logging
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 
 logger = logging.getLogger("trace_db")
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-# Use DATABASE_URL from environment, fallback to local SQLite
-raw_db_url = os.getenv("DATABASE_URL", "sqlite:///./edu_ai_vault.db")
+# Trace owns this database. Keep its local fallback separate from Orbit's vault.
+raw_db_url = os.getenv("TRACE_DATABASE_URL", "sqlite:///./edu_ai_vault.db")
 
 # Fix for Neon/Heroku: SQLAlchemy requires 'postgresql://' instead of 'postgres://'
 if raw_db_url.startswith("postgres://"):
@@ -53,7 +54,7 @@ try:
         pass
     logger.info(f"Database connection initialized successfully with {SQLALCHEMY_DATABASE_URL.split('@')[-1] if '@' in SQLALCHEMY_DATABASE_URL else 'local SQLite'}")
 except Exception as e:
-    logger.warning(f"Primary DATABASE_URL failed connection ({e}). Falling back to local SQLite 'edu_ai_vault.db' to allow local run.")
+    logger.warning(f"Primary TRACE_DATABASE_URL failed connection ({e}). Falling back to local SQLite 'edu_ai_vault.db' to allow local run.")
     SQLALCHEMY_DATABASE_URL = "sqlite:///./edu_ai_vault.db"
     engine = create_configured_engine(SQLALCHEMY_DATABASE_URL, {"connect_args": {"check_same_thread": False}})
 
