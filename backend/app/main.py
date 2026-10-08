@@ -258,12 +258,14 @@ async def api_key_middleware(request: Request, call_next):
             "/", "/health", "/api/health", "/docs", "/openapi.json", "/favicon.ico",
             "/home", "/welcome", "/index.html",
             "/app", "/student", "/learn",
+            "/orbit", "/DebateHub",
             "/login", "/signup", "/signup.html", "/Edu_AI/signup.html", "/Edu_AI/sign up.html",
             "/api/auth/login", "/api/auth/signup-form", "/api/report-bug",
             "/ingest", "/delete-unit", "/update-unit"
         ]
         or path.startswith("/app")
         or path.startswith("/assets")
+        or path.startswith("/DebateHub/")
         or path.startswith("/admin")
         or path.startswith("/Edu_AI")
         or path.startswith("/delete-unit/")

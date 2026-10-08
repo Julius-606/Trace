@@ -23,4 +23,10 @@ if [[ -f "${DEBATEHUB_DIR}/server.js" ]]; then
   DEBATEHUB_PID=$!
 fi
 
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-7860}"
+if [[ -x "${APP_DIR}/../.venv/bin/uvicorn" ]]; then
+  UVICORN_BIN="${APP_DIR}/../.venv/bin/uvicorn"
+else
+  UVICORN_BIN="uvicorn"
+fi
+
+exec "${UVICORN_BIN}" app.main:app --host 0.0.0.0 --port "${PORT:-7860}"
