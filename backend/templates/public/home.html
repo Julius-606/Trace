@@ -41,22 +41,18 @@
             </div>
 
             <!-- Navigation Actions -->
-            <div class="flex items-center gap-3">
-                <a href="/docs" target="_blank" class="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 px-3 py-2 rounded-xl transition">
-                    <span>⚡ API Docs</span>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="/orbit" class="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-cyan-400 hover:bg-slate-800 transition">
+                    🛰️ Orbit
                 </a>
-                <a href="/health" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span>System Online</span>
+                <a href="/admin" class="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+                    🛡️ Trace Admin
                 </a>
-                <a href="/app" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5">
-                    <span>🚀 Launch App</span>
+                <a href="/app" class="text-xs font-bold px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5">
+                    <span>🚀 Trace Webapp</span>
                 </a>
-                <a href="/signup" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition">
-                    Sign Up
-                </a>
-                <a href="/admin/login" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/80 hover:text-white transition">
-                    Superuser Portal &rarr;
+                <a href="/DebateHub" class="text-xs font-bold px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-md shadow-amber-600/30 transition">
+                    ⚖️ DebateHub
                 </a>
             </div>
         </div>
@@ -77,19 +73,96 @@
                 Trace provides an adaptive curriculum, Socratic clinical consults, spaced retrieval assessments, and zero-loss local vault synchronization.
             </p>
 
-            <div class="flex flex-wrap items-center justify-center gap-4 mt-8">
-                <a href="/app" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 transition duration-200 flex items-center gap-2">
-                    <span>🚀 Launch Interactive Web App</span>
-                    <span>&rarr;</span>
+            <div class="flex flex-wrap items-center justify-center gap-3 mt-8">
+                <a href="/app" class="px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center gap-1.5">
+                    <span>🚀 Launch Trace Webapp</span>
                 </a>
-                <a href="/signup" class="px-6 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800/90 text-slate-200 border border-slate-700 font-bold text-sm transition duration-200 flex items-center gap-2">
-                    <span>Create Account</span>
+                <a href="/admin" class="px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-xs transition flex items-center gap-1.5">
+                    <span>🛡️ Trace Backend Admin</span>
                 </a>
-                <a href="/admin/login" class="px-6 py-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-800/90 text-slate-400 hover:text-slate-200 border border-slate-800 font-bold text-sm transition duration-200 flex items-center gap-2">
-                    <span>Superuser Portal</span>
+                <a href="/orbit" class="px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/40 font-bold text-xs transition flex items-center gap-1.5">
+                    <span>🛰️ Orbit Backend</span>
+                </a>
+                <a href="/DebateHub" class="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 transition flex items-center gap-1.5">
+                    <span>⚖️ DebateHub</span>
                 </a>
             </div>
         </div>
+
+        <!-- Ecosystem Gateways Direct Access Section -->
+        <section class="max-w-6xl mx-auto mb-20">
+            <div class="text-center mb-8">
+                <span class="text-xs uppercase font-extrabold tracking-widest text-indigo-400">Public Internet Gateways</span>
+                <h2 class="text-2xl sm:text-3xl font-black text-white mt-1">Unified Multi-System Hub</h2>
+                <p class="text-xs text-slate-400 mt-1">Direct root endpoints running 24/7 on the cluster:</p>
+            </div>
+
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Gateway 1: Orbit Backend -->
+                <a href="/orbit" class="block group rounded-2xl border border-cyan-500/30 bg-slate-900/80 p-5 hover:border-cyan-400 hover:bg-slate-900 transition shadow-xl relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xl font-bold mb-3 group-hover:scale-110 transition">
+                        🛰️
+                    </div>
+                    <span class="text-[10px] uppercase font-bold text-cyan-400 tracking-wider">Autonomous Protocol</span>
+                    <h3 class="text-base font-bold text-white mt-0.5">Orbit Backend</h3>
+                    <p class="text-xs text-slate-400 mt-1.5 mb-3 leading-relaxed">
+                        Neural chat voice, Forex Guardian, and autonomous life admin task execution.
+                    </p>
+                    <div class="flex items-center justify-between text-[11px] font-bold text-cyan-300 border-t border-slate-800 pt-3">
+                        <span class="truncate">https://agent606-trace.hf.space/orbit</span>
+                        <span>&rarr;</span>
+                    </div>
+                </a>
+
+                <!-- Gateway 2: Trace Backend -->
+                <a href="/admin" class="block group rounded-2xl border border-indigo-500/30 bg-slate-900/80 p-5 hover:border-indigo-400 hover:bg-slate-900 transition shadow-xl relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xl font-bold mb-3 group-hover:scale-110 transition">
+                        🛡️
+                    </div>
+                    <span class="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">Superuser Portal</span>
+                    <h3 class="text-base font-bold text-white mt-0.5">Trace Backend</h3>
+                    <p class="text-xs text-slate-400 mt-1.5 mb-3 leading-relaxed">
+                        Syllabus catalogue ingestion, Live Overseer wiretap, and database administration.
+                    </p>
+                    <div class="flex items-center justify-between text-[11px] font-bold text-indigo-300 border-t border-slate-800 pt-3">
+                        <span class="truncate">https://agent606-trace.hf.space/admin</span>
+                        <span>&rarr;</span>
+                    </div>
+                </a>
+
+                <!-- Gateway 3: Trace Webapp -->
+                <a href="/app" class="block group rounded-2xl border border-purple-500/30 bg-slate-900/80 p-5 hover:border-purple-400 hover:bg-slate-900 transition shadow-xl relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-xl font-bold mb-3 group-hover:scale-110 transition">
+                        🚀
+                    </div>
+                    <span class="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Interactive Student Suite</span>
+                    <h3 class="text-base font-bold text-white mt-0.5">Trace Webapp</h3>
+                    <p class="text-xs text-slate-400 mt-1.5 mb-3 leading-relaxed">
+                        Adaptive clinical reasoning, spaced retrieval quizzes, and timetable calendar.
+                    </p>
+                    <div class="flex items-center justify-between text-[11px] font-bold text-purple-300 border-t border-slate-800 pt-3">
+                        <span class="truncate">https://agent606-trace.hf.space/app</span>
+                        <span>&rarr;</span>
+                    </div>
+                </a>
+
+                <!-- Gateway 4: DebateHub -->
+                <a href="/DebateHub" class="block group rounded-2xl border border-amber-500/30 bg-slate-900/80 p-5 hover:border-amber-400 hover:bg-slate-900 transition shadow-xl relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl font-bold mb-3 group-hover:scale-110 transition">
+                        ⚖️
+                    </div>
+                    <span class="text-[10px] uppercase font-bold text-amber-400 tracking-wider">Parliamentary Suite</span>
+                    <h3 class="text-base font-bold text-white mt-0.5">DebateHub</h3>
+                    <p class="text-xs text-slate-400 mt-1.5 mb-3 leading-relaxed">
+                        Live debate chamber, motions vault, financial ledger, and member directory pool.
+                    </p>
+                    <div class="flex items-center justify-between text-[11px] font-bold text-amber-300 border-t border-slate-800 pt-3">
+                        <span class="truncate">https://agent606-trace.hf.space/app</span>
+                        <span>&rarr;</span>
+                    </div>
+                </a>
+            </div>
+        </section>
 
         <!-- Quote of the Day Interactive Card -->
         <section class="max-w-3xl mx-auto mb-20">

@@ -31,6 +31,16 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const app = express();
 app.use(express.json());
 
+// Support transparent API routing whether requested as /DebateHub/api/... or /api/...
+app.use((req, _res, next) => {
+  if (req.url.startsWith('/DebateHub/api/')) {
+    req.url = req.url.replace(/^\/DebateHub\/api\//, '/api/');
+  } else if (req.url.startsWith('/debatehub/api/')) {
+    req.url = req.url.replace(/^\/debatehub\/api\//, '/api/');
+  }
+  next();
+});
+
 const DB_FILE = path.join(__dirname, 'database.json');
 
 // Interface for Root JSON Database
@@ -1258,7 +1268,11 @@ app.post('/api/notifications/:id/read', (req: Request, res: Response) => {
 // 11. VITE SPA & STATIC ASSET SERVER
 // =========================================================================
 async function startServer() {
-  const PORT = 3000;
+  const PORT = process.env.DEBATEHUB_PORT
+    ? parseInt(process.env.DEBATEHUB_PORT, 10)
+    : process.env.PORT
+      ? parseInt(process.env.PORT, 10)
+      : 3000;
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -1270,10 +1284,25 @@ async function startServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
+    // Fallback for SPA routing under /DebateHub in dev mode
+    app.get(['/DebateHub', '/DebateHub/*', '/debatehub', '/debatehub/*'], async (req, res, next) => {
+      try {
+        const url = req.originalUrl;
+        let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
-    app.use(express.static(path.join(__dirname, 'dist')));
-    app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    const distPath = path.join(__dirname, 'dist');
+    app.use('/DebateHub', express.static(distPath));
+    app.use('/debatehub', express.static(distPath));
+    app.use(express.static(distPath));
+    app.get(['/DebateHub', '/DebateHub/*', '/debatehub', '/debatehub/*', '*'], (_req: Request, res: Response) => {
+      res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 

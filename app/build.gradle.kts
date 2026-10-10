@@ -17,8 +17,15 @@ android {
 
     val internalApiKey = (project.findProperty("INTERNAL_API_KEY") as? String) ?: "64923e4d8f1a2c5b9e0f3d7a6c5b9eX0f3d7a6c5b9e0f3d7a"
 
+    val geminiApiKey = (project.findProperty("GEMINI_API_KEY") as? String)
+        ?: System.getenv("GEMINI_API_KEY") ?: ""
+    val geminiApiKey1 = (project.findProperty("GEMINI_API_KEY_1") as? String)
+        ?: System.getenv("GEMINI_API_KEY_1") ?: ""
+    val geminiApiKey2 = (project.findProperty("GEMINI_API_KEY_2") as? String)
+        ?: System.getenv("GEMINI_API_KEY_2") ?: ""
+
     defaultConfig {
-        applicationId = "com.example.edu_ai"
+        applicationId = "com.aistudio.trace.eduxy"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -27,11 +34,26 @@ android {
         buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
         buildConfigField("String", "FALLBACK_BACKEND_BASE_URL", "\"$fallbackBackendBaseUrl\"")
         buildConfigField("String", "INTERNAL_API_KEY", "\"$internalApiKey\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+        buildConfigField("String", "GEMINI_API_KEY_1", "\"$geminiApiKey1\"")
+        buildConfigField("String", "GEMINI_API_KEY_2", "\"$geminiApiKey2\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("debugConfig") {
+            storeFile = file("${rootDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debugConfig")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

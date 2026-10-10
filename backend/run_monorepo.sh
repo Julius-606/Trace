@@ -21,6 +21,16 @@ if [[ -f "${DEBATEHUB_DIR}/server.js" ]]; then
     PORT=3000 DEBATEHUB_PORT=3000 node server.js
   ) &
   DEBATEHUB_PID=$!
+elif [[ -f "${DEBATEHUB_DIR}/server.ts" ]]; then
+  (
+    cd "${DEBATEHUB_DIR}"
+    if command -v npx >/dev/null 2>&1; then
+      PORT=3000 DEBATEHUB_PORT=3000 npx tsx server.ts
+    elif command -v npm >/dev/null 2>&1; then
+      PORT=3000 DEBATEHUB_PORT=3000 npm run dev
+    fi
+  ) &
+  DEBATEHUB_PID=$!
 fi
 
 if [[ -x "${APP_DIR}/../.venv/bin/uvicorn" ]]; then

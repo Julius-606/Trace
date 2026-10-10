@@ -2,18 +2,17 @@
 package com.example.edu_ai.data.remote.ai
 
 import android.util.Log
+import com.example.edu_ai.BuildConfig
 
 /**
  * 🔑 The Key Rotary System
- * Inspired by your Python implementation!
  */
 object GeminiKeyManager {
     
-    private val apiKeys = listOf(
-        "AIzaSyDmvjVkFmt0RoTMNER8fYoIKfy7Pkw1sfo",
-        "AIzaSyDgvt1qfR_IG-UN__WcOPj1hv5s1IVUWHY",
-        "AIzaSyAexK9L9QdaJriD0NN7bfeSewiqfyMaR7g",
-        "AIzaSyAhUSxiUpljDD91wLNC1__18PywTvd0kCM"
+    private val apiKeys: List<String> = listOfNotNull(
+        BuildConfig.GEMINI_API_KEY.takeIf { it.isNotBlank() },
+        BuildConfig.GEMINI_API_KEY_1.takeIf { it.isNotBlank() },
+        BuildConfig.GEMINI_API_KEY_2.takeIf { it.isNotBlank() }
     )
 
     private var currentKeyIndex = 0
@@ -43,7 +42,7 @@ object GeminiKeyManager {
      */
     fun getKeySnippet(): String {
         val key = getCurrentKey()
-        return if (key.length > 4) "...${key.takeLast(4)}" else "INVALID"
+        return if (key.length > 4) "...${key.takeLast(4)}" else if (key.isNotEmpty()) key else "NOT_CONFIGURED"
     }
     
     // Legacy support for older code

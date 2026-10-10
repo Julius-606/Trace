@@ -17,7 +17,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, FileResponse, Response
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -177,6 +177,143 @@ async def initialize_orbit_schema():
 
 DEBATEHUB_INTERNAL_URL = os.getenv("DEBATEHUB_INTERNAL_URL", "http://127.0.0.1:3000")
 
+async def forward_to_debatehub(request: Request, subpath: str = ""):
+    """Forward traffic to internal DebateHub Node/Express service running on port 3000."""
+    raw_path = request.url.path
+
+    # Standardize path mapping for DebateHub
+    if raw_path in ["/DebateHub", "/debatehub"]:
+        return RedirectResponse(url="/DebateHub/", status_code=307)
+
+    if subpath:
+        # If calling /DebateHub/api/... strip /DebateHub so Express matches /api/...
+        if subpath.startswith("api/") or subpath.startswith("/api/"):
+            target = f"{DEBATEHUB_INTERNAL_URL}/{subpath.lstrip('/')}"
+        else:
+            target = f"{DEBATEHUB_INTERNAL_URL}/DebateHub/{subpath.lstrip('/')}"
+    else:
+        # Route path as is
+        target = f"{DEBATEHUB_INTERNAL_URL}{raw_path}"
+
+    if request.url.query:
+        target = f"{target}?{request.url.query}"
+
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    # Forward reverse proxy telemetry
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    headers["x-forwarded-for"] = headers.get("x-forwarded-for", client_ip)
+    headers["x-forwarded-proto"] = "https"
+    headers["x-forwarded-host"] = request.headers.get("host", "agent606-trace.hf.space")
+
+    body = await request.body()
+
+    # Special handling for Server-Sent Events (SSE) live sync stream
+    if "text/event-stream" in request.headers.get("accept", "") or raw_path.endswith("/stream"):
+        try:
+            client = httpx.AsyncClient(timeout=None)
+            req = client.build_request(request.method, target, headers=headers, content=body)
+            upstream_stream = await client.send(req, stream=True)
+
+            async def event_generator():
+                try:
+                    async for chunk in upstream_stream.aiter_bytes():
+                        yield chunk
+                finally:
+                    await upstream_stream.aclose()
+                    await client.aclose()
+
+            resp_headers = {
+                k: v for k, v in upstream_stream.headers.items()
+                if k.lower() not in {"content-length", "transfer-encoding", "connection"}
+            }
+            return StreamingResponse(
+                event_generator(),
+                status_code=upstream_stream.status_code,
+                headers=resp_headers,
+                media_type="text/event-stream"
+            )
+        except Exception as stream_err:
+            logger.warning("DebateHub live stream proxy failed: %s", stream_err)
+            return JSONResponse(status_code=503, content={"detail": "Live stream unavailable"})
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
+            upstream = await client.request(
+                request.method,
+                target,
+                headers=headers,
+                content=body,
+            )
+
+        excluded = {"content-encoding", "content-length", "transfer-encoding", "connection"}
+        response_headers = {
+            key: value
+            for key, value in upstream.headers.items()
+            if key.lower() not in excluded
+        }
+
+        # Rewrite internal redirects so 127.0.0.1:3000 doesn't leak to public browser
+        if "location" in response_headers:
+            loc = response_headers["location"]
+            if "127.0.0.1:3000" in loc or "localhost:3000" in loc:
+                response_headers["location"] = loc.replace("http://127.0.0.1:3000", "").replace("http://localhost:3000", "")
+            if response_headers["location"] == "/":
+                response_headers["location"] = "/DebateHub/"
+
+        return Response(
+            content=upstream.content,
+            status_code=upstream.status_code,
+            headers=response_headers,
+            media_type=upstream.headers.get("content-type"),
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("DebateHub proxy request failed for %s: %s", target, exc)
+
+        # For browser navigation, show an interactive auto-reconnecting screen while Node boots
+        if "text/html" in request.headers.get("accept", ""):
+            return HTMLResponse(
+                """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="3">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DebateHub | Initializing Service</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4 selection:bg-amber-500 selection:text-white">
+  <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl relative overflow-hidden">
+    <div class="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-3xl font-black mb-4">
+      ⚖️
+    </div>
+    <h2 class="text-xl font-bold text-white mb-2">DebateHub is Initializing</h2>
+    <p class="text-slate-400 text-xs leading-relaxed mb-6">
+      The internal Express service on port 3000 is starting up within the Hugging Face Space. This page will connect automatically in a few seconds...
+    </p>
+    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-amber-300 font-mono mb-6">
+      <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+      <span>Connecting to internal port 3000</span>
+    </div>
+    <div class="pt-4 border-t border-slate-800 flex items-center justify-center gap-4 text-xs">
+      <a href="/home" class="text-indigo-400 hover:text-indigo-300">&larr; Return to Home</a>
+      <a href="/app" class="text-slate-400 hover:text-slate-200">Launch Trace App</a>
+    </div>
+  </div>
+</body>
+</html>""",
+                status_code=503
+            )
+
+        return JSONResponse(
+            status_code=503,
+            content={
+                "service": "DebateHub",
+                "status": "unavailable",
+                "detail": "The independent DebateHub service on port 3000 is initializing. Reconnecting shortly.",
+            },
+        )
+
 @app.api_route(
     "/DebateHub",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
@@ -187,46 +324,119 @@ DEBATEHUB_INTERNAL_URL = os.getenv("DEBATEHUB_INTERNAL_URL", "http://127.0.0.1:3
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     include_in_schema=False,
 )
+@app.api_route(
+    "/debatehub",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/debatehub/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
 async def debatehub_proxy(request: Request, path: str = ""):
-    """Forward DebateHub traffic to its independent internal Express service."""
-    target = f"{DEBATEHUB_INTERNAL_URL}/{path}" if path else f"{DEBATEHUB_INTERNAL_URL}/"
-    if request.url.query:
-        target = f"{target}?{request.url.query}"
+    """Forward DebateHub UI & subpath traffic."""
+    return await forward_to_debatehub(request, path)
 
-    headers = dict(request.headers)
-    headers.pop("host", None)
-    body = await request.body()
-
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            upstream = await client.request(
-                request.method,
-                target,
-                headers=headers,
-                content=body,
-            )
-        excluded = {"content-encoding", "content-length", "transfer-encoding", "connection"}
-        response_headers = {
-            key: value
-            for key, value in upstream.headers.items()
-            if key.lower() not in excluded
-        }
-        return Response(
-            content=upstream.content,
-            status_code=upstream.status_code,
-            headers=response_headers,
-            media_type=upstream.headers.get("content-type"),
-        )
-    except httpx.HTTPError as exc:
-        logger.warning("DebateHub proxy request failed for %s: %s", target, exc)
-        return JSONResponse(
-            status_code=503,
-            content={
-                "service": "DebateHub",
-                "status": "unavailable",
-                "detail": "The independent DebateHub service is not ready.",
-            },
-        )
+# DebateHub API Route Proxies (enabling direct fetch calls from frontend)
+@app.api_route(
+    "/api/members",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/members/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/transactions",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/transactions/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/debates",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/debates/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/agendas",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/agendas/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/announcements",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/announcements/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/events",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/events/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/mentorship",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/mentorship/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/notifications",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/notifications/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/live/stream",
+    methods=["GET", "POST", "OPTIONS"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/db/status",
+    methods=["GET", "OPTIONS"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/system/status",
+    methods=["GET", "OPTIONS"],
+    include_in_schema=False,
+)
+async def debatehub_api_proxy(request: Request, path: str = ""):
+    """Forward DebateHub backend API calls directly to internal Express."""
+    return await forward_to_debatehub(request)
 
 class HFSpacePrefixMiddleware:
     def __init__(self, app):
@@ -235,13 +445,22 @@ class HFSpacePrefixMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
             path = scope.get("path", "")
-            prefix = "/spaces/Agent606/Edu-AI"
-            if path.startswith(prefix):
-                scope["path"] = path[len(prefix):] or "/"
-                if "raw_path" in scope:
-                    raw_path = scope["raw_path"].decode("ascii", "ignore")
-                    if raw_path.startswith(prefix):
-                        scope["raw_path"] = raw_path[len(prefix):].encode("ascii")
+            prefixes = [
+                "/spaces/Agent606/Edu-AI",
+                "/spaces/Agent606/Trace",
+            ]
+            space_id = os.environ.get("SPACE_ID")
+            if space_id:
+                prefixes.append(f"/spaces/{space_id}")
+
+            for prefix in prefixes:
+                if path.startswith(prefix):
+                    scope["path"] = path[len(prefix):] or "/"
+                    if "raw_path" in scope:
+                        raw_path = scope["raw_path"].decode("ascii", "ignore")
+                        if raw_path.startswith(prefix):
+                            scope["raw_path"] = raw_path[len(prefix):].encode("ascii")
+                    break
         await self.app(scope, receive, send)
 
 app.add_middleware(HFSpacePrefixMiddleware)
@@ -251,21 +470,23 @@ INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "64923e4d8f1a2c5b9e0f3d7a6
 # Global Security Middleware
 @app.middleware("http")
 async def api_key_middleware(request: Request, call_next):
-    # Paths that bypass API key (root, health, docs, web signup, admin, syllabus ingestion, public home, web app)
+    # Paths that bypass API key (root, health, docs, web signup, admin, syllabus ingestion, public home, web app, orbit, debatehub)
     path = request.url.path
     if (
         path in [
             "/", "/health", "/api/health", "/docs", "/openapi.json", "/favicon.ico",
             "/home", "/welcome", "/index.html",
             "/app", "/student", "/learn",
-            "/orbit", "/DebateHub",
+            "/orbit", "/orbit/", "/DebateHub", "/debatehub",
             "/login", "/signup", "/signup.html", "/Edu_AI/signup.html", "/Edu_AI/sign up.html",
             "/api/auth/login", "/api/auth/signup-form", "/api/report-bug",
             "/ingest", "/delete-unit", "/update-unit"
         ]
         or path.startswith("/app")
         or path.startswith("/assets")
-        or path.startswith("/DebateHub/")
+        or path.startswith("/orbit")
+        or path.startswith("/DebateHub")
+        or path.startswith("/debatehub")
         or path.startswith("/admin")
         or path.startswith("/Edu_AI")
         or path.startswith("/delete-unit/")
@@ -435,10 +656,31 @@ def root(request: Request, db: Session = Depends(get_db)):
         {"request": request, "version": admin.BACKEND_VERSION, "error": None}
     )
 
-@app.get("/orbit", include_in_schema=False)
-async def orbit_entrypoint():
-    """Keep Orbit's public entrypoint distinct from Trace's admin home."""
-    return RedirectResponse(url="/docs")
+@app.get("/orbit", response_class=HTMLResponse)
+@app.get("/orbit/", response_class=HTMLResponse)
+@app.get("/orbit/{subpath:path}", response_class=HTMLResponse)
+async def orbit_entrypoint(request: Request, subpath: str = ""):
+    """Orbit's public entrypoint and interactive protocol gateway."""
+    if "application/json" in request.headers.get("accept", ""):
+        return JSONResponse({
+            "service": "Orbit Protocol",
+            "version": "1.2.0",
+            "status": "online",
+            "endpoints": {
+                "neural_link": "/api/v1/orbit/converse",
+                "forex_guardian": "/api/v1/forex",
+                "med_scholar": "/api/v1/med_scholar",
+                "tasks": "/api/v1/tasks",
+                "terminal_pilot": "/api/v1/terminal"
+            },
+            "docs": "/docs",
+            "ecosystem": {
+                "trace_backend": "/admin",
+                "trace_webapp": "/app",
+                "debatehub": "/DebateHub"
+            }
+        })
+    return templates.TemplateResponse("public/orbit.html", {"request": request})
 
 @app.post("/ingest", response_class=HTMLResponse)
 async def handle_ingestion(
