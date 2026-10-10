@@ -31,12 +31,16 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.edu_ai.data.local.UnitWithModules
 import com.example.edu_ai.data.local.UserEntity
+import com.example.edu_ai.data.local.exactFieldName
+import com.example.edu_ai.data.local.exactCourseName
+import com.example.edu_ai.data.local.exactUnitGroupName
 import com.example.edu_ai.data.remote.ApiTimetableSlot
 import com.example.edu_ai.ui.components.DynamicBackground
 import com.example.edu_ai.ui.components.ProgressRings
 import com.example.edu_ai.ui.components.RingProgress
 import com.example.edu_ai.utils.TactileFeedback
 import com.example.edu_ai.utils.PreferenceManager
+import com.example.edu_ai.utils.UpdateManager
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -436,6 +440,28 @@ fun StudentDashboard(
                                         shape = RoundedCornerShape(12.dp)
                                     ) {
                                         Column(modifier = Modifier.padding(12.dp)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                                ) {
+                                                    Text(
+                                                        text = unit.exactFieldName.uppercase(),
+                                                        fontSize = 7.sp,
+                                                        fontWeight = FontWeight.Black,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = unit.exactCourseName,
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.secondary
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(2.dp))
                                             Text(unit.unitName, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                             Text(
                                                 text = "${unitWithModules.modules.size} Modules loaded",
@@ -547,6 +573,100 @@ fun StudentDashboardContent(
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.outline
                         )
+                    }
+                }
+            }
+        }
+
+        // =================================================================
+        // SYSTEM UPDATE NOTIFICATION BANNER (When Admin Publishes a Release)
+        // =================================================================
+        item {
+            val latestRelease by UpdateManager.latestRelease.collectAsState()
+            val mandatoryRequired by UpdateManager.mandatoryUpdateRequired.collectAsState()
+            val hasNewerRelease = latestRelease != null && (latestRelease!!.versionCode > UpdateManager.CURRENT_VERSION_CODE || mandatoryRequired)
+
+            if (hasNewerRelease && latestRelease != null) {
+                val release = latestRelease!!
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (mandatoryRequired) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
+                        else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f)
+                    ),
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, if (mandatoryRequired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (mandatoryRequired) Icons.Default.SecurityUpdateWarning else Icons.Default.SystemUpdate,
+                                    contentDescription = null,
+                                    tint = if (mandatoryRequired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (mandatoryRequired) "CRITICAL UPDATE MANDATORY" else "NEW SYSTEM UPDATE AVAILABLE",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 12.sp,
+                                    letterSpacing = 0.5.sp,
+                                    color = if (mandatoryRequired) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (mandatoryRequired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
+                            ) {
+                                Text(
+                                    text = "v${release.version}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = release.releaseNotes ?: "A newer update is published in the Trace system archives. Download to ensure optimal stability and features.",
+                            fontSize = 12.sp,
+                            color = if (mandatoryRequired) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Size: ${release.fileSize}",
+                                fontSize = 11.sp,
+                                color = if (mandatoryRequired) MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                            )
+                            Button(
+                                onClick = {
+                                    UpdateManager.openDownloadUrl(context, release.downloadUrl)
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (mandatoryRequired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("DOWNLOAD APK", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
@@ -726,84 +846,166 @@ fun StudentDashboardContent(
                         Button(onClick = onOpenLibrary, shape = RoundedCornerShape(10.dp)) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("ADD FROM 21+ BACKEND UNITS", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("ADD FROM CURRICULUM CATALOGUE", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
         }
 
-        // Concentric Rings Unit Cards
-        items(uiState.unitsWithModules) { unitWithModules ->
-            val unit = unitWithModules.unit
-            val allTopics = unitWithModules.modules.flatMap { it.topics }
-            val allSubtopics = allTopics.flatMap { it.subtopics }
-            
-            val unitProgress = if (allSubtopics.isNotEmpty()) {
-                (allSubtopics.count { it.isCompleted }.toFloat() / allSubtopics.size) * 100f
-            } else 0f
-
-            val completedQuizSubtopicsCount = allSubtopics.count { sub ->
-                quizHistory.any { q -> q.unitName.equals(sub.name, ignoreCase = true) }
-            }
-            val quizProgress = if (allSubtopics.isNotEmpty()) {
-                (completedQuizSubtopicsCount.toFloat() / allSubtopics.size) * 100f
-            } else 0f
-
-            val currentModule = unitWithModules.modules.firstOrNull()
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onLaunchUnit(unit.localId) },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+        // Concentric Rings Unit Cards grouped by Exact Field -> Course -> Unit Group
+        val groupedByField = uiState.unitsWithModules.groupBy { it.unit.exactFieldName }
+        groupedByField.forEach { (fieldName, fieldUnits) ->
+            item {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp, bottom = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 ) {
-                    val rings = listOf(
-                        RingProgress(unitProgress, MaterialTheme.colorScheme.primary, "Learnt"),
-                        RingProgress(quizProgress, MaterialTheme.colorScheme.secondary, "Quiz")
-                    )
-                    
-                    ProgressRings(
-                        rings = rings,
-                        learntProgress = unitProgress,
-                        quizProgress = quizProgress,
-                        modifier = Modifier.size(125.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val fieldIcon = if (fieldName.contains("Medicine", ignoreCase = true)) Icons.Default.MedicalServices
+                            else if (fieldName.contains("Computer", ignoreCase = true)) Icons.Default.Computer
+                            else Icons.Default.Public
+                            Icon(fieldIcon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = fieldName,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         Text(
-                            unit.unitName, 
-                            fontWeight = FontWeight.ExtraBold, 
-                            fontSize = 17.sp,
-                            lineHeight = 21.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            currentModule?.module?.name ?: "Active Syllabus Module", 
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "${fieldUnits.size} Active",
                             fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.outline,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = { onLaunchUnit(unit.localId) },
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth().height(36.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    }
+                }
+            }
+
+            val groupedByCourse = fieldUnits.groupBy { it.unit.exactCourseName }
+            groupedByCourse.forEach { (courseName, courseUnits) ->
+                item {
+                    Text(
+                        text = "• Course: $courseName",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(start = 6.dp, top = 2.dp, bottom = 4.dp)
+                    )
+                }
+
+                items(courseUnits) { unitWithModules ->
+                    val unit = unitWithModules.unit
+                    val allTopics = unitWithModules.modules.flatMap { it.topics }
+                    val allSubtopics = allTopics.flatMap { it.subtopics }
+                    
+                    val unitProgress = if (allSubtopics.isNotEmpty()) {
+                        (allSubtopics.count { it.isCompleted }.toFloat() / allSubtopics.size) * 100f
+                    } else 0f
+
+                    val completedQuizSubtopicsCount = allSubtopics.count { sub ->
+                        quizHistory.any { q -> q.unitName.equals(sub.name, ignoreCase = true) }
+                    }
+                    val quizProgress = if (allSubtopics.isNotEmpty()) {
+                        (completedQuizSubtopicsCount.toFloat() / allSubtopics.size) * 100f
+                    } else 0f
+
+                    val currentModule = unitWithModules.modules.firstOrNull()
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onLaunchUnit(unit.localId) },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("CONTINUE SYLLABUS", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            val rings = listOf(
+                                RingProgress(unitProgress, MaterialTheme.colorScheme.primary, "Learnt"),
+                                RingProgress(quizProgress, MaterialTheme.colorScheme.secondary, "Quiz")
+                            )
+                            
+                            ProgressRings(
+                                rings = rings,
+                                learntProgress = unitProgress,
+                                quizProgress = quizProgress,
+                                modifier = Modifier.size(125.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    ) {
+                                        Text(
+                                            text = fieldName.uppercase(),
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                    ) {
+                                        Text(
+                                            text = courseName,
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    unit.unitName, 
+                                    fontWeight = FontWeight.ExtraBold, 
+                                    fontSize = 15.sp,
+                                    lineHeight = 19.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    currentModule?.module?.name ?: "Active Syllabus Module", 
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Button(
+                                    onClick = { onLaunchUnit(unit.localId) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth().height(36.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Text("CONTINUE SYLLABUS", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }

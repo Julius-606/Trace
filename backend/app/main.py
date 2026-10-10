@@ -593,6 +593,42 @@ assets_dir = WEBAPP_DIST_DIR / "assets"
 if assets_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="webapp_assets")
 
+# Dedicated Hugging Face Archives Directory Mount
+archives_dir = Path("Archives")
+archives_dir.mkdir(parents=True, exist_ok=True)
+backend_archives_dir = Path("backend/Archives")
+backend_archives_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/Archives", StaticFiles(directory=str(archives_dir)), name="archives_static")
+
+@app.get("/archives/{filename:path}")
+async def download_archive_file(filename: str):
+    """Direct APK and build artifact download from Hugging Face Archives vault."""
+    clean_name = os.path.basename(filename)
+    for search_dir in [Path("Archives"), Path("backend/Archives"), Path(".build-outputs"), Path("app/build/outputs/apk/debug")]:
+        file_path = search_dir / clean_name
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(
+                str(file_path),
+                media_type="application/vnd.android.package-archive",
+                filename=clean_name
+            )
+    raise HTTPException(status_code=404, detail="Archive build artifact not found")
+
+@app.get("/archives", response_class=HTMLResponse)
+async def public_archives_page(request: Request, db: Session = Depends(get_db)):
+    """Public release archives listing all published versions with APK downloads."""
+    releases = db.query(models.SystemRelease).order_by(models.SystemRelease.id.desc()).all()
+    latest_release = releases[0] if releases else None
+    return templates.TemplateResponse(
+        "public/archives.html",
+        {
+            "request": request,
+            "version": admin.BACKEND_VERSION,
+            "latest_release": latest_release,
+            "releases": releases
+        }
+    )
+
 @app.get("/app", response_class=HTMLResponse)
 @app.get("/app/{full_path:path}", response_class=HTMLResponse)
 @app.get("/student", response_class=HTMLResponse)
@@ -626,13 +662,17 @@ def health_check():
 async def public_home_page(request: Request, db: Session = Depends(get_db)):
     total_users = db.query(models.User).count()
     db_name = "PostgreSQL" if "postgres" in str(engine.url) else "SQLite Vault"
+    releases = db.query(models.SystemRelease).order_by(models.SystemRelease.id.desc()).all()
+    latest_release = releases[0] if releases else None
     return templates.TemplateResponse(
         "public/home.html",
         {
             "request": request,
             "version": admin.BACKEND_VERSION,
             "total_users": total_users,
-            "db_type": db_name
+            "db_type": db_name,
+            "latest_release": latest_release,
+            "all_releases": releases
         }
     )
 
@@ -742,13 +782,24 @@ async def signup_page(request: Request):
 @app.post("/Edu_AI/sign up.html", response_class=HTMLResponse)
 async def handle_browser_signup(
     request: Request,
-    username: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
-    role: str = Form(...),
+    full_name: Optional[str] = Form(None),
+    username: Optional[str] = Form(None),
+    otp: Optional[str] = Form(None),
+    role: str = Form("Student"),
+    age: Optional[int] = Form(None),
+    level_of_study: Optional[str] = Form(None),
+    course_pursued: Optional[str] = Form(None),
+    referral_code: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    existing_user = db.query(models.User).filter((models.User.email == email) | (models.User.username == username)).first()
+    clean_email = email.strip().lower()
+    display_name = (full_name or username or clean_email.split("@")[0]).strip()
+    
+    existing_user = db.query(models.User).filter(
+        (models.User.email == clean_email) | (models.User.username == display_name)
+    ).first()
     if existing_user:
         return HTMLResponse(
             """
@@ -759,7 +810,7 @@ async def handle_browser_signup(
                 <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl">
                     <div class="w-12 h-12 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center mx-auto text-xl font-bold mb-3">!</div>
                     <h2 class="text-xl font-bold text-white mb-2">Account Already Exists</h2>
-                    <p class="text-slate-400 text-xs">An account with that username or email address is already registered.</p>
+                    <p class="text-slate-400 text-xs">An account with that email address is already registered.</p>
                     <a href="/signup" class="mt-6 inline-block bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl">&larr; Return to Sign Up</a>
                 </div>
             </body>
@@ -768,11 +819,45 @@ async def handle_browser_signup(
             status_code=400
         )
 
+    # Verify password
+    if len(password.strip()) < 6:
+        return HTMLResponse(
+            """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><title>Password Error</title><script src="https://cdn.tailwindcss.com"></script></head>
+            <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4">
+                <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl">
+                    <div class="w-12 h-12 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center mx-auto text-xl font-bold mb-3">!</div>
+                    <h2 class="text-xl font-bold text-white mb-2">Weak Password</h2>
+                    <p class="text-slate-400 text-xs">Password must be at least 6 characters in length.</p>
+                    <a href="/signup" class="mt-6 inline-block bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl">&larr; Try Again</a>
+                </div>
+            </body>
+            </html>
+            """,
+            status_code=400
+        )
+
+    candidate_user = display_name
+    base_user = candidate_user
+    suffix = 1
+    while db.query(models.User).filter(models.User.username == candidate_user).first():
+        candidate_user = f"{base_user}_{suffix}"
+        suffix += 1
+
     new_user = models.User(
-        username=username,
-        email=email,
+        username=candidate_user,
+        full_name=display_name,
+        email=clean_email,
         hashed_password=security.get_password_hash(password),
         role=role,
+        age=age,
+        level_of_study=level_of_study,
+        course_pursued=course_pursued,
+        referral_code=referral_code,
+        semester_status=level_of_study or "Year 1",
+        is_email_verified=bool(otp)
     )
     db.add(new_user)
     db.commit()
@@ -782,9 +867,9 @@ async def handle_browser_signup(
         db=db,
         category="NEW_USER",
         title="New User Registration",
-        message=f"User '{username}' registered as {role} ({email}).",
+        message=f"User '{display_name}' ({clean_email}) enrolled in {course_pursued or 'General'} [{level_of_study or 'Year 1'}].",
         level="info",
-        details=f"Username: {username}\nRole: {role}\nEmail: {email}\nSource: Web Signup Portal ({request.client.host if request.client else 'remote'})"
+        details=f"Name: {display_name}\nRole: {role}\nEmail: {clean_email}\nAge: {age}\nCourse: {course_pursued}\nLevel: {level_of_study}\nReferral: {referral_code}"
     )
 
     return f"""

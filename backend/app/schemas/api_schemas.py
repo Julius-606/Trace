@@ -84,15 +84,45 @@ class ChaosRequest(BaseModel):
 class ChaosResponse(BaseModel):
     case_study: str
 
+class SendOtpRequest(BaseModel):
+    email: str
+    action: str = "signup"  # "signup" or "forgot_password"
+
+class SendOtpResponse(BaseModel):
+    status: str
+    message: str
+    email: str
+    otp_preview: Optional[str] = None
+
+class VerifyOtpRequest(BaseModel):
+    email: str
+    otp: str
+    action: str = "signup"
+
+class ForgotPasswordResetRequest(BaseModel):
+    email: str
+    otp: str
+    new_password: str
+
+class GenericAuthResponse(BaseModel):
+    status: str
+    message: str
+
 class UserCreate(BaseModel):
-    username: str
+    username: Optional[str] = None
+    full_name: Optional[str] = None
     email: str
     password: str
+    otp: Optional[str] = None
     role: str = "Student"
+    age: Optional[int] = None
+    level_of_study: Optional[str] = None
+    course_pursued: Optional[str] = None
+    referral_code: Optional[str] = None
     sensory_mode: str = "Standard"
     difficulty: str = "Medium (Standard)"
     ai_persona: str = "Standard Trace"
-    semester_status: str = "Year 4 - Redemption Arc"
+    semester_status: Optional[str] = "Year 4 - Redemption Arc"
     interests: List[str] = []
     active_units: List[str] = []
 

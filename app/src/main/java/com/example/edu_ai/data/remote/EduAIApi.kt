@@ -50,6 +50,18 @@ interface EduAIApi {
     @POST("api/auth/login")
     suspend fun login(@Body request: com.example.edu_ai.schemas.LoginRequest): com.example.edu_ai.schemas.TokenResponse
 
+    @POST("api/auth/send-otp")
+    suspend fun sendOtp(@Body request: com.example.edu_ai.schemas.SendOtpRequest): com.example.edu_ai.schemas.SendOtpResponse
+
+    @POST("api/auth/verify-otp")
+    suspend fun verifyOtp(@Body request: com.example.edu_ai.schemas.VerifyOtpRequest): com.example.edu_ai.schemas.GenericAuthResponse
+
+    @POST("api/auth/signup")
+    suspend fun signup(@Body request: com.example.edu_ai.schemas.SignupRequest): com.example.edu_ai.schemas.TokenResponse
+
+    @POST("api/auth/forgot-password/reset")
+    suspend fun resetPassword(@Body request: com.example.edu_ai.schemas.ForgotPasswordResetRequest): com.example.edu_ai.schemas.GenericAuthResponse
+
     // --- Teacher Endpoints ---
 
     @GET("api/teacher/dashboard")

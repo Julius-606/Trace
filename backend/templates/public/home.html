@@ -42,6 +42,9 @@
 
             <!-- Navigation Actions -->
             <div class="flex items-center gap-2 sm:gap-3">
+                <a href="/archives" class="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-indigo-400 hover:text-white hover:bg-slate-800 transition">
+                    📦 Archives
+                </a>
                 <a href="/orbit" class="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-cyan-400 hover:bg-slate-800 transition">
                     🛰️ Orbit
                 </a>
@@ -161,6 +164,57 @@
                         <span>&rarr;</span>
                     </div>
                 </a>
+            </div>
+        </section>
+
+        <!-- Latest Published Release & System Archives Section -->
+        <section class="max-w-4xl mx-auto mb-20">
+            <div class="rounded-3xl border border-indigo-500/40 bg-gradient-to-br from-indigo-950/50 via-slate-900/90 to-slate-950 p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span class="text-xs font-black uppercase tracking-widest text-indigo-400">Published System Release</span>
+                        {% if latest_release and latest_release.is_mandatory %}
+                        <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            🚨 Mandatory Lock Enforced
+                        </span>
+                        {% endif %}
+                    </div>
+                    <a href="/archives" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1">
+                        <span>View All Archives Vault</span>
+                        <span>&rarr;</span>
+                    </a>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-6 items-center">
+                    <div class="md:col-span-2 space-y-2">
+                        <div class="flex items-center gap-3">
+                            <h3 class="text-xl sm:text-2xl font-black text-white">
+                                Trace Android App v{{ latest_release.version if latest_release else '1.0.0' }}
+                            </h3>
+                            <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                Code: {{ latest_release.version_code if latest_release else '100' }}
+                            </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                            {{ latest_release.release_notes if (latest_release and latest_release.release_notes) else 'Official production release featuring curriculum catalogue integration, Socratic clinical guidance, spaced retrieval quizzes, and offline vault synchronization.' }}
+                        </p>
+                        <div class="text-[11px] text-slate-400 flex items-center gap-4 pt-1">
+                            <span>Size: <strong class="text-slate-200">{{ latest_release.file_size if latest_release else '20.0 MB' }}</strong></span>
+                            <span>Storage: <strong class="text-indigo-300">Hugging Face Archives Folder</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2.5">
+                        {% set download_target = latest_release.download_url if (latest_release and latest_release.download_url) else '/Archives/Trace-v1.0.0-release.apk' %}
+                        <a href="{{ download_target }}" download class="w-full text-center py-3 px-5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
+                            <span>📥 Download APK Build</span>
+                        </a>
+                        <a href="/archives" class="w-full text-center py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-semibold text-xs transition">
+                            Browse Previous Builds ({{ all_releases|length if all_releases else 1 }})
+                        </a>
+                    </div>
+                </div>
             </div>
         </section>
 

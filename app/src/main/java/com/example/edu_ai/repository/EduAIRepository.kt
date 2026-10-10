@@ -44,6 +44,7 @@ class EduAIRepository(
             dao.deduplicateTopics()
             dao.deduplicateSubtopics()
             dao.deduplicateQuizHistory()
+            dao.deletePlaceholderUnitsIfUnused()
 
             val response = api.getDashboard(userId)
             
@@ -170,47 +171,9 @@ class EduAIRepository(
                 )
                 dao.insertUser(devUser)
 
-                val existingUnits = dao.getAllUnits().first()
-                if (existingUnits.isEmpty()) {
-                    val devUnits = listOf(
-                        UnitEntity(unitName = "Biochemistry II", isActive = true),
-                        UnitEntity(unitName = "General Surgery", isActive = true),
-                        UnitEntity(unitName = "Internal Medicine", isActive = true)
-                    )
-                    dao.insertUnits(devUnits)
-
-                    val units = dao.getAllUnits().first()
-                    units.forEach { unit: UnitEntity ->
-                        val moduleIds = dao.insertModules(listOf(
-                            ModuleEntity(unitId = unit.localId, name = "Metabolic Foundations"),
-                            ModuleEntity(unitId = unit.localId, name = "Core Clinical Mechanisms")
-                        ))
-                        
-                        moduleIds.forEach { moduleId ->
-                            val topicIds = dao.insertTopics(listOf(
-                                TopicEntity(moduleId = moduleId, name = "Fundamental Concepts"),
-                                TopicEntity(moduleId = moduleId, name = "Diagnostic Applications")
-                            ))
-                            
-                            topicIds.forEach { topicId ->
-                                dao.insertSubtopics(listOf(
-                                    SubtopicEntity(
-                                        topicId = topicId, 
-                                        name = "Overview & Kinetics", 
-                                        isCompleted = false,
-                                        learningObjectivesJson = gson.toJson(listOf("Core pathway kinetics", "Anatomical landmarks", "Differential diagnoses"))
-                                    ),
-                                    SubtopicEntity(
-                                        topicId = topicId, 
-                                        name = "Key Diagnostic Markers", 
-                                        isCompleted = false,
-                                        learningObjectivesJson = gson.toJson(listOf("Allosteric enzyme mechanics", "Rate-limiting transition states", "Board exam traps"))
-                                    )
-                                ))
-                            }
-                        }
-                    }
-                }
+                // Do not populate default placeholder units (Biochemistry, General Surgery, Internal Medicine)
+                // New users start with a clean dashboard and can add authentic units from the Curriculum Catalogue.
+                dao.deletePlaceholderUnitsIfUnused()
 
                 emit(devUser)
             }
@@ -467,6 +430,24 @@ class EduAIRepository(
 
     suspend fun toggleMandatoryRelease(releaseId: Long): Map<String, Any?> {
         return api.toggleMandatoryRelease(releaseId)
+    }
+
+    // --- Auth & Verification OTP Methods ---
+
+    suspend fun sendOtp(email: String, action: String = "signup"): com.example.edu_ai.schemas.SendOtpResponse {
+        return api.sendOtp(com.example.edu_ai.schemas.SendOtpRequest(email = email, action = action))
+    }
+
+    suspend fun verifyOtp(email: String, otp: String, action: String = "signup"): com.example.edu_ai.schemas.GenericAuthResponse {
+        return api.verifyOtp(com.example.edu_ai.schemas.VerifyOtpRequest(email = email, otp = otp, action = action))
+    }
+
+    suspend fun signup(request: com.example.edu_ai.schemas.SignupRequest): com.example.edu_ai.schemas.TokenResponse {
+        return api.signup(request)
+    }
+
+    suspend fun resetPassword(request: com.example.edu_ai.schemas.ForgotPasswordResetRequest): com.example.edu_ai.schemas.GenericAuthResponse {
+        return api.resetPassword(request)
     }
 }
 

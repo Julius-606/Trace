@@ -44,6 +44,9 @@ interface EduAIDao {
     @Query("DELETE FROM units WHERE localId = :unitId")
     suspend fun deleteUnitById(unitId: Long)
 
+    @Query("DELETE FROM units WHERE unitName IN ('Biochemistry II', 'General Surgery', 'Internal Medicine') AND localId NOT IN (SELECT unitId FROM modules WHERE moduleId IN (SELECT moduleId FROM topics WHERE topicId IN (SELECT topicId FROM subtopics WHERE isCompleted = 1)))")
+    suspend fun deletePlaceholderUnitsIfUnused()
+
     // Modules
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertModules(modules: List<ModuleEntity>): List<Long>

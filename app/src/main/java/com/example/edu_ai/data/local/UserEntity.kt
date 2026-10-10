@@ -1,9 +1,3 @@
-
-// IDENTITY: data/local/UserEntity.kt
-// VERSION: 1.1.0
-// ⚙️ GEAR 1.2: The Local Database (SQLite)
-// This is our base currency. It handles the local ledger of all our data.
-
 package com.example.edu_ai.data.local
 
 import androidx.room.Entity
@@ -18,8 +12,9 @@ data class UserEntity(
     val semesterStatus: String,
     val aiPersona: String,
     val email: String? = null,
-    val passwordHash: String? = null
+    val passwordHash: String? = null,
+    val fullName: String? = null,
+    val age: Int? = null,
+    val coursePursued: String? = null,
+    val referralCode: String? = null
 )
-
-
- 

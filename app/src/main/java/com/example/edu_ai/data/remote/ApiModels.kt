@@ -191,8 +191,76 @@ data class ApiStudyContextPayload(
 data class LibraryUnit(
     @SerializedName("id") val id: Int,
     @SerializedName("name") val name: String,
-    @SerializedName("category") val category: String
-)
+    @SerializedName("category") val category: String,
+    @SerializedName("course") val course: String? = null,
+    @SerializedName("unit_group") val unitGroup: String? = null
+) {
+    val exactFieldName: String
+        get() = when {
+            category.equals("Clinical Medicine", ignoreCase = true) ||
+            category.equals("Medicine", ignoreCase = true) ||
+            name.contains("Medicine", ignoreCase = true) ||
+            name.contains("Surgery", ignoreCase = true) ||
+            name.contains("Pharmacology", ignoreCase = true) ||
+            name.contains("Obstetrics", ignoreCase = true) ||
+            name.contains("Child Health", ignoreCase = true) ||
+            name.contains("BCM", ignoreCase = true) ||
+            name.contains("Emergency", ignoreCase = true) -> "Clinical Medicine"
+            category.equals("Computer Science & IT", ignoreCase = true) ||
+            category.equals("Computer Science", ignoreCase = true) ||
+            name.contains("Computer", ignoreCase = true) ||
+            name.contains("Software", ignoreCase = true) -> "Computer Science & IT"
+            else -> "Global Studies & Core Foundations"
+        }
+
+    val exactCourseName: String
+        get() = course ?: when (exactFieldName) {
+            "Clinical Medicine" -> "MBChB"
+            "Computer Science & IT" -> "BSc. Software Engineering"
+            else -> "Common Core Curriculum"
+        }
+
+    val exactUnitGroupName: String
+        get() = unitGroup ?: when {
+            name.contains("Internal Medicine I:", ignoreCase = true) || name.contains("Internal Medicine I (", ignoreCase = true) ->
+                "Internal Medicine I: Cardiopulmonary and Haematology"
+            name.contains("Internal Medicine II:", ignoreCase = true) || name.contains("Internal Medicine II (", ignoreCase = true) ->
+                "Internal Medicine II: Neurology, Nephrology and Endocrinology"
+            name.contains("Internal Medicine III:", ignoreCase = true) || name.contains("Internal Medicine III (", ignoreCase = true) ->
+                "Internal Medicine III: Gastroenterology, Infectious Diseases, Rheumatology and Oncology"
+            name.contains("GENERAL SURGERY I", ignoreCase = true) ->
+                "General Surgery I - BCM 314 - Principles, Emergency, GI Tract and Hernias"
+            name.contains("GENERAL SURGERY II", ignoreCase = true) ->
+                "General Surgery II - BCM 322 - Hepatobiliary, Urology, Breast, Vascular and Specialty Surgery"
+            name.contains("Obstetrics and Gynaecology I", ignoreCase = true) ->
+                "Obstetrics and Gynaecology I - BCM 317"
+            name.contains("Obstetrics and Gynaecology II", ignoreCase = true) ->
+                "Obstetrics and Gynaecology II - BCM 323 - Pathology and Management"
+            name.contains("Clinical Pharmacology I:", ignoreCase = true) ->
+                "Clinical Pharmacology I: Autonomic, Cardiovascular, Respiratory"
+            name.contains("Clinical Pharmacology II:", ignoreCase = true) ->
+                "Clinical Pharmacology II: Antimicrobials, CNS, Endocrine"
+            name.contains("Clinical Pharmacology III", ignoreCase = true) ->
+                "Clinical Pharmacology III - BCM 331"
+            name.contains("General Pharmacology", ignoreCase = true) ->
+                "General Pharmacology"
+            name.contains("Emergency Medicine", ignoreCase = true) ->
+                "Emergency Medicine and Life Support [ATLS & ACLS]"
+            name.contains("Child Health", ignoreCase = true) ->
+                "Child Health - BCM 312"
+            name.contains("Research Methodology - HRS", ignoreCase = true) ->
+                "Medical Research Methodology - HRS 312"
+            name.contains("PHILOSOPHY", ignoreCase = true) ->
+                "Introduction to Philosophy - EEN 114"
+            name.contains("ENTREPRENEURSHIP", ignoreCase = true) ->
+                "Entrepreneurship - HSN 425"
+            name.contains("BASIC COMPUTER SKILLS", ignoreCase = true) ->
+                "Basic Computer Skills - BCM 111"
+            name.contains("RESEARCH METHODOLOGY", ignoreCase = true) ->
+                "Research Methodology"
+            else -> name
+        }
+}
 
 data class ApiProgressItem(
     @SerializedName("node_id") val nodeId: Int,

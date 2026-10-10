@@ -51,49 +51,53 @@ fun LibraryScreen(
     // Curated fallback matching the 21 authentic units in the backend
     val fallbackUnits = remember {
         listOf(
-            LibraryUnit(8, "General Pharmacology", "Medicine"),
-            LibraryUnit(30, "INTRODUCTION TO PHILOSOPHY - EEN 114", "Global"),
-            LibraryUnit(18, "GENERAL SURGERY I - BCM 314 - Principles, Emergency, GI Tract and Hernias", "Medicine"),
-            LibraryUnit(21, "GENERAL SURGERY II - BCM 322 - Hepatobiliary, Urology, Breast, Vascular and Specialty Surgery", "Medicine"),
-            LibraryUnit(22, "Obstetrics and Gynaecology I - BCM 317", "Medicine"),
-            LibraryUnit(23, "Obstetrics and Gynaecology II - BCM 323 - Pathology and Management", "Medicine"),
-            LibraryUnit(31, "ENTREPRENEURSHIP - HSN 425", "Global"),
-            LibraryUnit(3, "Internal Medicine I: Cardiopulmonary and Haematology", "Medicine"),
-            LibraryUnit(1, "Internal Medicine I (Crash Course): Cardiopulmonary and Haematology", "Medicine"),
-            LibraryUnit(5, "Internal Medicine II: Neurology, Nephrology and Endocrinology", "Medicine"),
-            LibraryUnit(4, "Internal Medicine II (Crash Course): Neurology, Nephrology and Endocrinology", "Medicine"),
-            LibraryUnit(7, "Internal Medicine III: Gastroenterology, Infectious Diseases, Rheumatology and Oncology", "Medicine"),
-            LibraryUnit(6, "Internal Medicine III (Crash Course): Gastroenterology, Infectious Diseases, Rheumatology and Oncology", "Medicine"),
-            LibraryUnit(32, "BASIC COMPUTER SKILLS - BCM 111", "Global"),
-            LibraryUnit(9, "Clinical Pharmacology I: Autonomic, Cardiovascular, Respiratory, Gastrointestinal and Hematology", "Medicine"),
-            LibraryUnit(10, "Clinical Pharmacology II: Antimicrobials, CNS, Endocrine, Chemotherapy and Immunomodulators", "Medicine"),
-            LibraryUnit(29, "Clinical Pharmacology III - BCM 331 - Comprehensive and Applied Clinical Pharmacology", "Medicine"),
-            LibraryUnit(35, "Emergency Medicine and Life Support [ATLS & ACLS]", "Medicine"),
-            LibraryUnit(36, "Child Health - BCM 312", "Medicine"),
-            LibraryUnit(38, "RESEARCH METHODOLOGY", "Global"),
-            LibraryUnit(37, "Research Methodology - HRS 312", "Medicine")
+            LibraryUnit(3, "Internal Medicine I: Cardiopulmonary and Haematology", "Clinical Medicine", "MBChB", "Internal Medicine I: Cardiopulmonary and Haematology"),
+            LibraryUnit(1, "Internal Medicine I (Crash Course): Cardiopulmonary and Haematology", "Clinical Medicine", "MBChB", "Internal Medicine I: Cardiopulmonary and Haematology"),
+            LibraryUnit(5, "Internal Medicine II: Neurology, Nephrology and Endocrinology", "Clinical Medicine", "MBChB", "Internal Medicine II: Neurology, Nephrology and Endocrinology"),
+            LibraryUnit(4, "Internal Medicine II (Crash Course): Neurology, Nephrology and Endocrinology", "Clinical Medicine", "MBChB", "Internal Medicine II: Neurology, Nephrology and Endocrinology"),
+            LibraryUnit(7, "Internal Medicine III: Gastroenterology, Infectious Diseases, Rheumatology and Oncology", "Clinical Medicine", "MBChB", "Internal Medicine III: Gastroenterology, Infectious Diseases, Rheumatology and Oncology"),
+            LibraryUnit(6, "Internal Medicine III (Crash Course): Gastroenterology, Infectious Diseases, Rheumatology and Oncology", "Clinical Medicine", "MBChB", "Internal Medicine III: Gastroenterology, Infectious Diseases, Rheumatology and Oncology"),
+            LibraryUnit(18, "GENERAL SURGERY I - BCM 314 - Principles, Emergency, GI Tract and Hernias", "Clinical Medicine", "MBChB", "General Surgery I - BCM 314 - Principles, Emergency, GI Tract and Hernias"),
+            LibraryUnit(21, "GENERAL SURGERY II - BCM 322 - Hepatobiliary, Urology, Breast, Vascular and Specialty Surgery", "Clinical Medicine", "MBChB", "General Surgery II - BCM 322 - Hepatobiliary, Urology, Breast, Vascular and Specialty Surgery"),
+            LibraryUnit(22, "Obstetrics and Gynaecology I - BCM 317", "Clinical Medicine", "MBChB", "Obstetrics and Gynaecology I - BCM 317"),
+            LibraryUnit(23, "Obstetrics and Gynaecology II - BCM 323 - Pathology and Management", "Clinical Medicine", "MBChB", "Obstetrics and Gynaecology II - BCM 323 - Pathology and Management"),
+            LibraryUnit(8, "General Pharmacology", "Clinical Medicine", "MBChB", "General Pharmacology"),
+            LibraryUnit(9, "Clinical Pharmacology I: Autonomic, Cardiovascular, Respiratory, Gastrointestinal and Hematology", "Clinical Medicine", "MBChB", "Clinical Pharmacology I: Autonomic, Cardiovascular, Respiratory"),
+            LibraryUnit(10, "Clinical Pharmacology II: Antimicrobials, CNS, Endocrine, Chemotherapy and Immunomodulators", "Clinical Medicine", "MBChB", "Clinical Pharmacology II: Antimicrobials, CNS, Endocrine"),
+            LibraryUnit(29, "Clinical Pharmacology III - BCM 331 - Comprehensive and Applied Clinical Pharmacology", "Clinical Medicine", "MBChB", "Clinical Pharmacology III - BCM 331"),
+            LibraryUnit(35, "Emergency Medicine and Life Support [ATLS & ACLS]", "Clinical Medicine", "MBChB", "Emergency Medicine and Life Support [ATLS & ACLS]"),
+            LibraryUnit(36, "Child Health - BCM 312", "Clinical Medicine", "MBChB", "Child Health - BCM 312"),
+            LibraryUnit(37, "Research Methodology - HRS 312", "Clinical Medicine", "MBChB", "Medical Research Methodology - HRS 312"),
+            LibraryUnit(38, "RESEARCH METHODOLOGY", "Global Studies & Core Foundations", "Common Core Curriculum", "Research Methodology"),
+            LibraryUnit(30, "INTRODUCTION TO PHILOSOPHY - EEN 114", "Global Studies & Core Foundations", "Common Core Curriculum", "Introduction to Philosophy - EEN 114"),
+            LibraryUnit(31, "ENTREPRENEURSHIP - HSN 425", "Global Studies & Core Foundations", "Common Core Curriculum", "Entrepreneurship - HSN 425"),
+            LibraryUnit(32, "BASIC COMPUTER SKILLS - BCM 111", "Global Studies & Core Foundations", "Common Core Curriculum", "Basic Computer Skills - BCM 111")
         )
     }
 
     val displayUnits = if (uiState.availableUnits.isNotEmpty()) uiState.availableUnits else fallbackUnits
 
     var searchQuery by remember { mutableStateOf("") }
-    var selectedCategoryFilter by remember { mutableStateOf("All") } // "All", "Medicine", "Global", "Surgery", "Pharmacology", "Internal Medicine"
+    var selectedCategoryFilter by remember { mutableStateOf("All") }
     var addingUnitId by remember { mutableStateOf<Int?>(null) }
 
     val filteredUnits = remember(displayUnits, searchQuery, selectedCategoryFilter) {
         displayUnits.filter { unit ->
             val matchesSearch = searchQuery.isBlank() ||
                     unit.name.contains(searchQuery, ignoreCase = true) ||
-                    unit.category.contains(searchQuery, ignoreCase = true)
+                    unit.category.contains(searchQuery, ignoreCase = true) ||
+                    unit.exactFieldName.contains(searchQuery, ignoreCase = true) ||
+                    unit.exactCourseName.contains(searchQuery, ignoreCase = true) ||
+                    unit.exactUnitGroupName.contains(searchQuery, ignoreCase = true)
 
             val matchesFilter = when (selectedCategoryFilter) {
                 "All" -> true
-                "Medicine" -> unit.category.equals("Medicine", ignoreCase = true)
-                "Global" -> unit.category.equals("Global", ignoreCase = true)
+                "Clinical Medicine" -> unit.exactFieldName.equals("Clinical Medicine", ignoreCase = true)
+                "Global Studies & Core Foundations" -> unit.exactFieldName.equals("Global Studies & Core Foundations", ignoreCase = true)
+                "MBChB" -> unit.exactCourseName.equals("MBChB", ignoreCase = true)
+                "Common Core" -> unit.exactCourseName.contains("Common Core", ignoreCase = true)
                 "Surgery" -> unit.name.contains("surgery", ignoreCase = true)
                 "Pharmacology" -> unit.name.contains("pharmacology", ignoreCase = true)
-                "Internal Medicine" -> unit.name.contains("internal medicine", ignoreCase = true)
                 "Crash Courses" -> unit.name.contains("crash", ignoreCase = true)
                 else -> true
             }
@@ -195,7 +199,7 @@ fun LibraryScreen(
                 )
 
                 // Category Filter Chips
-                val filterChips = listOf("All", "Medicine", "Global", "Internal Medicine", "Surgery", "Pharmacology", "Crash Courses")
+                val filterChips = listOf("All", "Clinical Medicine", "Global Studies & Core Foundations", "MBChB", "Common Core", "Crash Courses", "Surgery", "Pharmacology")
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -253,19 +257,72 @@ fun LibraryScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(filteredUnits) { unit ->
-                            UnitBackendCard(
-                                unit = unit,
-                                isAdding = addingUnitId == unit.id,
-                                onAdd = {
-                                    TactileFeedback.triggerSubtleClick(context)
-                                    addingUnitId = unit.id
-                                    viewModel.addUnit(unit.id, userId) {
-                                        addingUnitId = null
-                                        onUnitAdded()
+                        val groupedByField = filteredUnits.groupBy { it.exactFieldName }
+                        groupedByField.forEach { (fieldName, fieldUnits) ->
+                            item {
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 10.dp, bottom = 2.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            val fieldIcon = if (fieldName.contains("Medicine", ignoreCase = true)) Icons.Default.MedicalServices
+                                            else if (fieldName.contains("Computer", ignoreCase = true)) Icons.Default.Computer
+                                            else Icons.Default.Public
+                                            Icon(fieldIcon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = fieldName,
+                                                fontWeight = FontWeight.Black,
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        Text(
+                                            text = "${fieldUnits.size} Units Available",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
                                     }
                                 }
-                            )
+                            }
+
+                            val groupedByCourse = fieldUnits.groupBy { it.exactCourseName }
+                            groupedByCourse.forEach { (courseName, courseUnits) ->
+                                item {
+                                    Text(
+                                        text = "• Course: $courseName",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.padding(start = 6.dp, top = 2.dp, bottom = 2.dp)
+                                    )
+                                }
+
+                                items(courseUnits, key = { it.id }) { unit ->
+                                    UnitBackendCard(
+                                        unit = unit,
+                                        isAdding = addingUnitId == unit.id,
+                                        onAdd = {
+                                            TactileFeedback.triggerSubtleClick(context)
+                                            addingUnitId = unit.id
+                                            viewModel.addUnit(unit.id, userId) {
+                                                addingUnitId = null
+                                                onUnitAdded()
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -280,7 +337,7 @@ fun UnitBackendCard(
     isAdding: Boolean,
     onAdd: () -> Unit
 ) {
-    val isMedicine = unit.category.equals("Medicine", ignoreCase = true)
+    val isMedicine = unit.exactFieldName.contains("Medicine", ignoreCase = true)
     val categoryColor = if (isMedicine) Color(0xFF00E5FF) else Color(0xFF10B981)
     val categoryIcon: ImageVector = if (isMedicine) Icons.Default.MedicalServices else Icons.Default.Public
 
@@ -320,10 +377,23 @@ fun UnitBackendCard(
                         color = categoryColor.copy(alpha = 0.15f)
                     ) {
                         Text(
-                            text = unit.category.uppercase(),
+                            text = unit.exactFieldName.uppercase(),
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Black,
                             color = categoryColor,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            text = unit.exactCourseName,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                         )
                     }

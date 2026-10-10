@@ -265,9 +265,26 @@ fun AdminDashboardScreen(
                                 )
                                 
                                 val hierarchyData = listOf(
-                                    "Medical & Health Sciences" to listOf(
-                                        "MBChB" to listOf("Biochemistry II", "General Surgery", "Internal Medicine", "Clinical Science"),
-                                        "BSc. Nursing" to listOf("Anatomy & Physiology", "General Pharmacology", "Pathology")
+                                    "Clinical Medicine" to listOf(
+                                        "MBChB" to listOf(
+                                            "Internal Medicine I",
+                                            "Internal Medicine II",
+                                            "Internal Medicine III",
+                                            "General Surgery I",
+                                            "General Surgery II",
+                                            "Clinical Pharmacology",
+                                            "Obstetrics & Gynaecology",
+                                            "Emergency Medicine",
+                                            "Child Health"
+                                        )
+                                    ),
+                                    "Global Studies & Core Foundations" to listOf(
+                                        "Common Core Curriculum" to listOf(
+                                            "Research Methodology",
+                                            "Introduction to Philosophy",
+                                            "Entrepreneurship",
+                                            "Basic Computer Skills"
+                                        )
                                     ),
                                     "Computer Science & IT" to listOf(
                                         "BSc. Software Engineering" to listOf("Database Systems", "Advanced Algorithms", "Web Architecture"),

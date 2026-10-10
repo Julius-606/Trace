@@ -15,6 +15,12 @@ class User(Base):
     difficulty = Column(String(50), default="Medium (Standard)")
     ai_persona = Column(String(100), default="Standard Trace")
     semester_status = Column(String(100), default="Year 4 - Redemption Arc")
+    full_name = Column(String(150), nullable=True)
+    age = Column(Integer, nullable=True)
+    level_of_study = Column(String(100), nullable=True)
+    course_pursued = Column(String(150), nullable=True)
+    referral_code = Column(String(100), nullable=True)
+    is_email_verified = Column(Boolean, default=False)
     interests = Column(JSON, default=list)
 
     # Relationships
@@ -233,6 +239,19 @@ class CanvasSession(Base):
     course_name = Column(String(100), default="MBChB")
     unit_group_name = Column(String(100), nullable=True)
     last_updated = Column(Float)
+
+
+class EmailVerificationOTP(Base):
+    __tablename__ = "email_verification_otps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(150), index=True)
+    otp = Column(String(10), index=True)
+    action = Column(String(50), default="signup")  # "signup" or "forgot_password"
+    created_at = Column(Float)
+    expires_at = Column(Float)
+    is_used = Column(Boolean, default=False)
+
 
 
 

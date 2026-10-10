@@ -39,13 +39,8 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
     return user_response(user)
 
 def populate_default_syllabus(db: Session, user_id: int):
-    # Let's check if the user already has units to prevent double insertion
-    existing = db.query(models.Unit).filter(models.Unit.owner_id == user_id).first()
-    if existing:
-        return
-
-    # Define default medical courses structure
-    syllabus_data = {
+    # Disabled by design: new users start with clean dashboard without hardcoded placeholders (Biochemistry, General Surgery, Internal Medicine)
+    return
         "Biochemistry II": {
             "Metabolic Pathways": {
                 "Enzyme Kinetics and Regulation": [
@@ -149,9 +144,6 @@ def get_dashboard(user_id: str, db: Session = Depends(get_db)):
         db.refresh(user)
 
     active_units = db.query(models.Unit).filter(models.Unit.owner_id == user.id, models.Unit.is_active == True).all()
-    if not active_units:
-        populate_default_syllabus(db, user.id)
-        active_units = db.query(models.Unit).filter(models.Unit.owner_id == user.id, models.Unit.is_active == True).all()
 
     unit_names = [u.name for u in active_units]
     quizzes = db.query(models.QuizHistory).filter(models.QuizHistory.owner_id == user.id).all()

@@ -4,7 +4,8 @@ import json
 import logging
 from typing import Optional, List, Dict, Any
 from pathlib import Path
-from fastapi import APIRouter, Request, Depends, HTTPException, Form, Response
+import re
+from fastapi import APIRouter, Request, Depends, HTTPException, Form, Response, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -848,8 +849,9 @@ async def admin_create_release(
     release_notes: Optional[str] = Form(None),
     is_current: bool = Form(False),
     is_mandatory: bool = Form(False),
-    file_size: str = Form("14.8 MB"),
+    file_size: Optional[str] = Form(None),
     min_supported_version_code: int = Form(1),
+    apk_file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
     # Support both JSON payload from Android app and Form data from Web Admin
@@ -868,6 +870,32 @@ async def admin_create_release(
             min_supported_version_code = body.get("min_supported_version_code", min_supported_version_code)
         except Exception:
             pass
+
+    # Save uploaded APK file to Hugging Face dedicated Archives folder
+    if apk_file and apk_file.filename:
+        safe_name = os.path.basename(apk_file.filename)
+        safe_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', safe_name)
+        if not safe_name.lower().endswith(".apk"):
+            safe_name += ".apk"
+
+        archives_dir = Path("Archives")
+        archives_dir.mkdir(parents=True, exist_ok=True)
+        backend_archives_dir = Path("backend/Archives")
+        backend_archives_dir.mkdir(parents=True, exist_ok=True)
+
+        contents = await apk_file.read()
+        target_path = archives_dir / safe_name
+        target_path.write_bytes(contents)
+
+        backend_target_path = backend_archives_dir / safe_name
+        backend_target_path.write_bytes(contents)
+
+        size_mb = len(contents) / (1024 * 1024)
+        file_size = f"{size_mb:.1f} MB"
+        download_url = f"/Archives/{safe_name}"
+
+    if not file_size:
+        file_size = "14.8 MB"
 
     if not version:
         version = f"1.{int(time.time()) % 100}.0"
