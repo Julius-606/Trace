@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edu-AI Trace &amp; GLUK DebateHub | Unified Access Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between relative overflow-x-hidden selection:bg-indigo-500 selection:text-white">
+
+    <!-- Ambient Dynamic Glows -->
+    <div id="ambientGlow1" class="absolute -top-32 left-1/4 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none transition-all duration-700"></div>
+    <div id="ambientGlow2" class="absolute -bottom-32 right-1/4 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl pointer-events-none transition-all duration-700"></div>
+
+    <!-- Top Navigation Header -->
+    <header class="w-full border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-xl px-4 sm:px-8 py-3.5 flex items-center justify-between relative z-20">
+        <div class="flex items-center gap-3">
+            <a href="/home" class="flex items-center gap-2.5 group">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center font-black text-white text-base shadow-md shadow-indigo-600/30 group-hover:scale-105 transition-transform">
+                    T
+                </div>
+                <div>
+                    <span class="font-extrabold text-sm text-white tracking-tight block">Edu-AI Ecosystem</span>
+                    <span class="text-[10px] text-slate-400 font-semibold tracking-wider block">Unified Authorization Gateway</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3 text-xs font-semibold">
+            <a href="/home" class="px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/60 text-slate-300 hover:text-white hover:border-slate-700 transition">
+                🏠 Home
+            </a>
+            <a href="/archives" class="px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/60 text-slate-300 hover:text-white hover:border-slate-700 transition">
+                📦 APK Archives
+            </a>
+            <a href="/signup" class="px-3 py-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition">
+                Register Student
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 flex items-center justify-center px-4 py-8 sm:py-12 relative z-10">
+        <div class="w-full max-w-xl">
+
+            <!-- Differentiated Portal Tab Switcher (The 3 Distinct Logon CUJs) -->
+            <div class="mb-6 p-1.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 backdrop-blur-md shadow-xl grid grid-cols-3 gap-1">
+                <button type="button" id="tabStudent" onclick="switchPortal('student')"
+                    class="portal-tab py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 text-indigo-300 bg-indigo-600/20 border border-indigo-500/40 shadow-sm">
+                    <span class="text-base">🎓</span>
+                    <span>Student / Learner</span>
+                </button>
+                <button type="button" id="tabDebate" onclick="switchPortal('debate')"
+                    class="portal-tab py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent">
+                    <span class="text-base">⚖️</span>
+                    <span>GLUK DebateHub</span>
+                </button>
+                <button type="button" id="tabAdmin" onclick="switchPortal('admin')"
+                    class="portal-tab py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent">
+                    <span class="text-base">🛡️</span>
+                    <span>Overseer Admin</span>
+                </button>
+            </div>
+
+            <!-- Card Shell -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-9 shadow-2xl backdrop-blur-xl relative overflow-hidden transition-all duration-300">
+                
+                <!-- Status & Error Alert Container -->
+                <div id="alertBox" class="hidden mb-5 p-3.5 rounded-2xl text-xs font-medium flex items-start gap-2.5">
+                    <span id="alertIcon" class="text-base shrink-0">⚠️</span>
+                    <span id="alertMsg" class="flex-1"></span>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- CUJ 1: STUDENT & CLINICAL ACADEMIC LOGIN                       -->
+                <!-- ============================================================== -->
+                <div id="cujStudent" class="portal-panel space-y-5">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xl font-extrabold text-white tracking-tight">Trace Academic &amp; Clinical Vault</h2>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">Learner Portal</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Sign in with your enrolled email or institutional username to access your weekly timetable, Socratic AI mentor, and recall quizzes.</p>
+                    </div>
+
+                    <!-- Fast Demo Persona Pills -->
+                    <div>
+                        <p class="text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-2">Instant Demo Personas (1-Click Fill)</p>
+                        <div class="grid grid-cols-3 gap-2 text-left">
+                            <button type="button" onclick="fillStudent('student@trace.edu', 'student123')"
+                                class="p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-indigo-500/50 hover:bg-slate-800 transition text-[11px] group">
+                                <span class="font-bold text-slate-200 block group-hover:text-indigo-300">Alex Kim</span>
+                                <span class="text-[10px] text-slate-500 block">Student (Yr 4)</span>
+                            </button>
+                            <button type="button" onclick="fillStudent('teacher@trace.edu', 'teacher123')"
+                                class="p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-indigo-500/50 hover:bg-slate-800 transition text-[11px] group">
+                                <span class="font-bold text-slate-200 block group-hover:text-indigo-300">Dr. Neema</span>
+                                <span class="text-[10px] text-slate-500 block">Faculty Mentor</span>
+                            </button>
+                            <button type="button" onclick="fillStudent('parent@trace.edu', 'parent123')"
+                                class="p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-indigo-500/50 hover:bg-slate-800 transition text-[11px] group">
+                                <span class="font-bold text-slate-200 block group-hover:text-indigo-300">Eleanor Kim</span>
+                                <span class="text-[10px] text-slate-500 block">Parent / Guardian</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <form onsubmit="handleStudentLogin(event)" class="space-y-4 text-xs">
+                        <div>
+                            <label class="block font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Email Address / Username</label>
+                            <input type="text" id="studentEmail" required placeholder="student@trace.edu" value="student@trace.edu"
+                                class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition">
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="font-semibold uppercase tracking-wider text-slate-400">Password</label>
+                                <button type="button" onclick="openForgotDialog()" class="text-indigo-400 hover:text-indigo-300 font-bold hover:underline">
+                                    Forgot password?
+                                </button>
+                            </div>
+                            <input type="password" id="studentPassword" required placeholder="••••••••" value="student123"
+                                class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition">
+                        </div>
+
+                        <button type="submit" id="studentBtn"
+                            class="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] py-3.5 font-bold text-sm text-white shadow-lg shadow-indigo-600/30 transition duration-200 flex items-center justify-center gap-2">
+                            <span>Sign In to Trace Learning</span>
+                            <span>&rarr;</span>
+                        </button>
+                    </form>
+
+                    <div class="pt-4 border-t border-slate-800 flex items-center justify-between text-xs">
+                        <span class="text-slate-400">Need a student account?</span>
+                        <a href="/signup" class="text-indigo-400 hover:text-indigo-300 font-bold hover:underline flex items-center gap-1">
+                            <span>Register with Email OTP</span>
+                            <span>&rarr;</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- CUJ 2: GLUK DEBATE CLUB OPERATIONS PORTAL                      -->
+                <!-- ============================================================== -->
+                <div id="cujDebate" class="portal-panel hidden space-y-5">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xl font-extrabold text-white tracking-tight">GLUK Debate Club Operations</h2>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">Debater Portal</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Great Lakes University of Kisumu Debate Club official operations console. Real-time tournament sessions, dues management &amp; adjudication logs.</p>
+                    </div>
+
+                    <!-- Fast Debater Persona Pills -->
+                    <div>
+                        <p class="text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-2">GLUK Roster Quick Select (Default PIN: gluk2026)</p>
+                        <div class="grid grid-cols-3 gap-2 text-left">
+                            <button type="button" onclick="fillDebater('juliusgachoki26@gmail.com', 'gluk2026')"
+                                class="p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-amber-500/50 hover:bg-slate-800 transition text-[11px] group">
+                                <span class="font-bold text-slate-200 block group-hover:text-amber-300">Julius Gachoki</span>
+                                <span class="text-[10px] text-amber-400 block font-semibold">Club President</span>
+                            </button>
+                            <button type="button" onclick="fillDebater('achieng.odhiambo@gluk.ac.ke', 'gluk2026')"
+                                class="p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-amber-500/50 hover:bg-slate-800 transition text-[11px] group">
+                                <span class="font-bold text-slate-200 block group-hover:text-amber-300">Brenda Odhiambo</span>
+                                <span class="text-[10px] text-slate-500 block">Vice President</span>
+                            </button>
+                            <button type="button" onclick="fillDebater('brian.kiprono@gluk.ac.ke', 'gluk2026')"
+                                class="p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-amber-500/50 hover:bg-slate-800 transition text-[11px] group">
+                                <span class="font-bold text-slate-200 block group-hover:text-amber-300">Brian Kiprono</span>
+                                <span class="text-[10px] text-slate-500 block">Chief Adjudicator</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <form onsubmit="handleDebateLogin(event)" class="space-y-4 text-xs">
+                        <div>
+                            <label class="block font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Registered Email or Student Reg No.</label>
+                            <input type="text" id="debateEmail" required placeholder="juliusgachoki26@gmail.com" value="juliusgachoki26@gmail.com"
+                                class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition">
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Club Security Password</label>
+                            <input type="password" id="debatePassword" required placeholder="gluk2026" value="gluk2026"
+                                class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition">
+                        </div>
+
+                        <button type="submit" id="debateBtn"
+                            class="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 active:scale-[0.99] py-3.5 font-extrabold text-sm shadow-lg shadow-amber-500/25 transition duration-200 flex items-center justify-center gap-2">
+                            <span>Open GLUK DebateHub Operations</span>
+                            <span>&rarr;</span>
+                        </button>
+                    </form>
+
+                    <div class="pt-4 border-t border-slate-800 flex items-center justify-between text-xs">
+                        <span class="text-slate-400">Join GLUK Debate Club roster:</span>
+                        <a href="/DebateHub" class="text-amber-400 hover:text-amber-300 font-bold hover:underline">
+                            Direct Portal Entry &rarr;
+                        </a>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- CUJ 3: SUPERUSER OVERSEER & ADMIN LOGIN                       -->
+                <!-- ============================================================== -->
+                <div id="cujAdmin" class="portal-panel hidden space-y-5">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xl font-extrabold text-white tracking-tight">THE OVERSEER &amp; Admin Terminal</h2>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">SuperAdmin</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Full system governance, live wiretap telemetry, syllabus ingestion engine, database migration tools, and release publishing vault.</p>
+                    </div>
+
+                    <form method="post" action="/admin/login" class="space-y-4 text-xs">
+                        <div>
+                            <label class="block font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Superuser Email</label>
+                            <input type="email" name="email" required placeholder="admin@trace.edu" value="admin@trace.edu"
+                                class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition">
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Master Key Password</label>
+                            <input type="password" name="password" required placeholder="admin123" value="admin123"
+                                class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition">
+                        </div>
+
+                        <button type="submit"
+                            class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] py-3.5 font-bold text-sm text-white shadow-lg shadow-emerald-600/30 transition duration-200 flex items-center justify-center gap-2">
+                            <span>Access SuperAdmin Control Room</span>
+                            <span>&rarr;</span>
+                        </button>
+                    </form>
+
+                    <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 text-center">
+                        Root overseer credentials: <code class="text-emerald-300 font-mono">admin@trace.edu</code> / <code class="text-emerald-300 font-mono">admin123</code>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Ecosystem Status Summary -->
+            <div class="mt-6 text-center text-xs text-slate-500 space-x-3">
+                <span>Version 3.0.0 Monolith</span>
+                <span>•</span>
+                <a href="/orbit" class="hover:text-cyan-400 transition font-medium">Orbit Protocol Gateway</a>
+                <span>•</span>
+                <a href="/DebateHub" class="hover:text-amber-400 transition font-medium">DebateHub Direct</a>
+                <span>•</span>
+                <a href="/docs" target="_blank" class="hover:text-indigo-400 transition font-medium">API Docs</a>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Forgot Password Modal Dialog -->
+    <div id="forgotModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <span class="text-indigo-400 font-bold text-lg">🔑</span>
+                    <h3 class="font-extrabold text-white text-base">Reset Account Password</h3>
+                </div>
+                <button type="button" onclick="closeForgotDialog()" class="text-slate-500 hover:text-white text-xl font-bold">&times;</button>
+            </div>
+
+            <div id="forgotStatus" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Registered Account Email</label>
+                    <div class="flex gap-2">
+                        <input type="email" id="forgotEmail" placeholder="student@trace.edu"
+                            class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white outline-none focus:border-indigo-500">
+                        <button type="button" id="btnSendForgotOtp" onclick="sendForgotOtp()"
+                            class="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition whitespace-nowrap">
+                            Send OTP
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">6-Digit Verification Code</label>
+                    <input type="text" id="forgotOtp" placeholder="e.g. 849201 or 123456" maxlength="6"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-mono tracking-widest outline-none focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">New Secure Password</label>
+                    <input type="password" id="forgotNewPassword" placeholder="Minimum 6 characters"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white outline-none focus:border-indigo-500">
+                </div>
+
+                <button type="button" id="btnSubmitForgotReset" onclick="submitPasswordReset()"
+                    class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-extrabold transition mt-2">
+                    Verify Code &amp; Update Password
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Client Controller Script -->
+    <script>
+        function showAlert(msg, isSuccess = false) {
+            const box = document.getElementById('alertBox');
+            const icon = document.getElementById('alertIcon');
+            const text = document.getElementById('alertMsg');
+            box.classList.remove('hidden', 'bg-rose-500/10', 'border-rose-500/30', 'text-rose-300', 'bg-emerald-500/10', 'border-emerald-500/30', 'text-emerald-300');
+            if (isSuccess) {
+                box.classList.add('bg-emerald-500/10', 'border', 'border-emerald-500/30', 'text-emerald-300');
+                icon.textContent = '✅';
+            } else {
+                box.classList.add('bg-rose-500/10', 'border', 'border-rose-500/30', 'text-rose-300');
+                icon.textContent = '⚠️';
+            }
+            text.textContent = msg;
+        }
+
+        function clearAlert() {
+            document.getElementById('alertBox').classList.add('hidden');
+        }
+
+        function switchPortal(portal) {
+            clearAlert();
+            // Tab buttons
+            const tabs = {
+                student: document.getElementById('tabStudent'),
+                debate: document.getElementById('tabDebate'),
+                admin: document.getElementById('tabAdmin')
+            };
+            // Panels
+            const panels = {
+                student: document.getElementById('cujStudent'),
+                debate: document.getElementById('cujDebate'),
+                admin: document.getElementById('cujAdmin')
+            };
+
+            // Glows
+            const g1 = document.getElementById('ambientGlow1');
+            const g2 = document.getElementById('ambientGlow2');
+
+            // Reset all tabs
+            Object.values(tabs).forEach(t => {
+                t.className = 'portal-tab py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent';
+            });
+            Object.values(panels).forEach(p => p.classList.add('hidden'));
+
+            if (portal === 'student') {
+                tabs.student.className = 'portal-tab py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 text-indigo-300 bg-indigo-600/20 border border-indigo-500/40 shadow-sm';
+                panels.student.classList.remove('hidden');
+                g1.className = 'absolute -top-32 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none transition-all duration-700';
+            } else if (portal === 'debate') {
+                tabs.debate.className = 'portal-tab py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 text-amber-300 bg-amber-500/20 border border-amber-500/40 shadow-sm';
+                panels.debate.classList.remove('hidden');
+                g1.className = 'absolute -top-32 left-1/4 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl pointer-events-none transition-all duration-700';
+            } else if (portal === 'admin') {
+                tabs.admin.className = 'portal-tab py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 text-emerald-300 bg-emerald-600/20 border border-emerald-500/40 shadow-sm';
+                panels.admin.classList.remove('hidden');
+                g1.className = 'absolute -top-32 left-1/4 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none transition-all duration-700';
+            }
+
+            // Update URL without reload
+            const url = new URL(window.location);
+            url.searchParams.set('portal', portal);
+            window.history.replaceState({}, '', url);
+        }
+
+        function fillStudent(email, pwd) {
+            document.getElementById('studentEmail').value = email;
+            document.getElementById('studentPassword').value = pwd;
+            clearAlert();
+        }
+
+        function fillDebater(email, pwd) {
+            document.getElementById('debateEmail').value = email;
+            document.getElementById('debatePassword').value = pwd;
+            clearAlert();
+        }
+
+        async function handleStudentLogin(e) {
+            e.preventDefault();
+            clearAlert();
+            const btn = document.getElementById('studentBtn');
+            const email = document.getElementById('studentEmail').value.trim();
+            const password = document.getElementById('studentPassword').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>Verifying credentials...</span>';
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    if (data.access_token) {
+                        localStorage.setItem('trace_access_token', data.access_token);
+                    }
+                    showAlert(`Authenticated as ${data.username || email}. Launching Trace Workspace...`, true);
+                    setTimeout(() => {
+                        window.location.href = '/app';
+                    }, 600);
+                } else {
+                    showAlert(data.detail || data.error || 'Invalid email or password.');
+                }
+            } catch (err) {
+                showAlert('Connection error. Server may be initializing.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Sign In to Trace Learning</span><span>&rarr;</span>';
+            }
+        }
+
+        async function handleDebateLogin(e) {
+            e.preventDefault();
+            clearAlert();
+            const btn = document.getElementById('debateBtn');
+            const email = document.getElementById('debateEmail').value.trim();
+            const password = document.getElementById('debatePassword').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>Connecting to DebateHub...</span>';
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    if (data.token) {
+                        localStorage.setItem('gluk_debate_token', data.token);
+                    }
+                    if (data.user && data.user.id) {
+                        localStorage.setItem('gluk_debate_user_id', data.user.id);
+                    }
+                    const userName = data.user ? data.user.fullName : (data.username || email);
+                    showAlert(`Authenticated debater: ${userName}. Entering GLUK DebateHub...`, true);
+                    setTimeout(() => {
+                        window.location.href = '/DebateHub';
+                    }, 600);
+                } else {
+                    showAlert(data.detail || data.error || 'Invalid Debate Club credentials.');
+                }
+            } catch (err) {
+                showAlert('Connection error. DebateHub service initializing.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Open GLUK DebateHub Operations</span><span>&rarr;</span>';
+            }
+        }
+
+        // Forgot password flow
+        function openForgotDialog() {
+            document.getElementById('forgotEmail').value = document.getElementById('studentEmail').value;
+            document.getElementById('forgotModal').classList.remove('hidden');
+        }
+
+        function closeForgotDialog() {
+            document.getElementById('forgotModal').classList.add('hidden');
+        }
+
+        async function sendForgotOtp() {
+            const email = document.getElementById('forgotEmail').value.trim();
+            const statusBox = document.getElementById('forgotStatus');
+            const btn = document.getElementById('btnSendForgotOtp');
+
+            if (!email || !email.includes('@')) {
+                statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30';
+                statusBox.textContent = 'Please enter a valid email address.';
+                statusBox.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            try {
+                const res = await fetch('/api/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, action: 'forgot_password' })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
+                    statusBox.textContent = data.message + (data.otp_preview ? ` (Code: ${data.otp_preview})` : '');
+                    if (data.otp_preview) {
+                        document.getElementById('forgotOtp').value = data.otp_preview;
+                    }
+                } else {
+                    statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30';
+                    statusBox.textContent = data.detail || 'Could not send verification code.';
+                }
+            } catch (err) {
+                statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30';
+                statusBox.textContent = 'Failed to connect to authentication server.';
+            } finally {
+                statusBox.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Resend OTP';
+            }
+        }
+
+        async function submitPasswordReset() {
+            const email = document.getElementById('forgotEmail').value.trim();
+            const otp = document.getElementById('forgotOtp').value.trim();
+            const new_password = document.getElementById('forgotNewPassword').value;
+            const statusBox = document.getElementById('forgotStatus');
+            const btn = document.getElementById('btnSubmitForgotReset');
+
+            if (!otp || new_password.length < 6) {
+                statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30';
+                statusBox.textContent = 'Enter 6-digit OTP and new password (min 6 chars).';
+                statusBox.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Resetting...';
+
+            try {
+                const res = await fetch('/api/auth/forgot-password/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp, new_password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
+                    statusBox.textContent = data.message;
+                    setTimeout(() => {
+                        closeForgotDialog();
+                        document.getElementById('studentPassword').value = new_password;
+                        showAlert('Password successfully updated. Sign in with your new password.', true);
+                    }, 1500);
+                } else {
+                    statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30';
+                    statusBox.textContent = data.detail || 'Failed to reset password.';
+                }
+            } catch (err) {
+                statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30';
+                statusBox.textContent = 'Server connection error.';
+            } finally {
+                statusBox.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Verify Code & Update Password';
+            }
+        }
+
+        // On load, resolve initial portal from query parameter
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const portal = params.get('portal');
+            if (portal && ['student', 'debate', 'admin'].includes(portal)) {
+                switchPortal(portal);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -44,11 +44,12 @@ class SafeEncoder(json.JSONEncoder):
 REQUEST_LOG_BUFFER: List[Dict[str, Any]] = []
 MAX_REQUEST_LOGS = 120
 
-def record_live_request(method: str, path: str, status_code: int, duration_ms: float, ip: str, user_agent: str):
+def record_live_request(method: str, path: str, status_code: int, duration_ms: float, ip: str, user_agent: str, app: str = "Trace"):
     entry = {
         "id": f"req_{int(time.time() * 1000)}_{len(REQUEST_LOG_BUFFER)}",
         "timestamp": time.time(),
         "time_str": time.strftime("%H:%M:%S", time.localtime()),
+        "app": app,
         "method": method,
         "path": path,
         "status_code": status_code,

@@ -145,22 +145,31 @@ try:
 
         logger.info("Database migrations: Self-healing schema validation complete.")
 
-        admin_email = os.environ.get("ADMIN_EMAIL", "admin@trace.edu")
-        existing_admin = init_db.query(models.User).filter(models.User.email == admin_email).first()
-        if not existing_admin:
-            admin_pwd = os.environ.get("ADMIN_PASSWORD", "admin123")
-            super_user = models.User(
-                username="SuperAdmin",
-                email=admin_email,
-                hashed_password=security.get_password_hash(admin_pwd),
-                role="Admin",
-                difficulty="Hard (Advanced)",
-                ai_persona="Superuser",
-                semester_status="Superuser Administrator"
-            )
-            init_db.add(super_user)
-            init_db.commit()
-            logger.info(f"Default Superuser created: {admin_email}")
+        # Seed default accounts for students, teachers, parents, and admins
+        default_accounts = [
+            ("admin@trace.edu", "SuperAdmin", "admin123", "Admin", "Hard (Advanced)", "Superuser", "System Administration"),
+            ("student@trace.edu", "Alex Kim", "student123", "Student", "Medium (Standard)", "Socratic Tutor", "Year 4 - Clinical Rotations"),
+            ("teacher@trace.edu", "Dr. Neema Ongaga", "teacher123", "Teacher", "Advanced Faculty", "Pedagogical Report Assistant", "Department of Clinical Sciences"),
+            ("parent@trace.edu", "Eleanor Kim", "parent123", "Parent", "Standard", "Supportive Education Consultant", "Guardian Dashboard")
+        ]
+        for acc_email, acc_name, acc_pwd, acc_role, acc_diff, acc_persona, acc_status in default_accounts:
+            existing_acc = init_db.query(models.User).filter(models.User.email == acc_email).first()
+            if not existing_acc:
+                new_acc = models.User(
+                    username=acc_name,
+                    full_name=acc_name,
+                    email=acc_email,
+                    hashed_password=security.get_password_hash(acc_pwd),
+                    role=acc_role,
+                    difficulty=acc_diff,
+                    ai_persona=acc_persona,
+                    semester_status=acc_status,
+                    is_email_verified=True,
+                    active_units=["Biochemistry II", "General Surgery", "Internal Medicine"]
+                )
+                init_db.add(new_acc)
+                init_db.commit()
+                logger.info(f"Seeded default account: {acc_email} [{acc_role}]")
 except Exception as e:
     logger.warning(f"Initial schema migration or admin setup warning: {e}. Tables will initialize on request if needed.")
 
@@ -174,6 +183,11 @@ async def initialize_orbit_schema():
         logger.info("Orbit database schema verified successfully.")
     except Exception as exc:
         logger.warning("Orbit database schema initialization deferred: %s", exc)
+
+# ==============================================================================
+# Multi-App Ingress Router & Dispatcher (Trace vs DebateHub vs Orbit)
+# ==============================================================================
+from app.core.app_dispatcher import identify_target_app, DEBATEHUB_EXCLUSIVE_PREFIXES
 
 DEBATEHUB_INTERNAL_URL = os.getenv("DEBATEHUB_INTERNAL_URL", "http://127.0.0.1:3000")
 
@@ -260,6 +274,9 @@ async def forward_to_debatehub(request: Request, subpath: str = ""):
                 response_headers["location"] = loc.replace("http://127.0.0.1:3000", "").replace("http://localhost:3000", "")
             if response_headers["location"] == "/":
                 response_headers["location"] = "/DebateHub/"
+
+        response_headers["X-Resolved-App"] = "DebateHub"
+        response_headers["X-Processed-By"] = "DebateHub-Express-NodeJS:3000"
 
         return Response(
             content=upstream.content,
@@ -434,9 +451,105 @@ async def debatehub_proxy(request: Request, path: str = ""):
     methods=["GET", "OPTIONS"],
     include_in_schema=False,
 )
+@app.api_route(
+    "/api/system/reinitialize",
+    methods=["POST", "OPTIONS"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/db/init",
+    methods=["POST", "OPTIONS"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/auth/me",
+    methods=["GET", "OPTIONS"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/auth/logout",
+    methods=["POST", "OPTIONS"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/auth/google",
+    methods=["POST", "OPTIONS"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/members/submit-mpesa",
+    methods=["POST", "OPTIONS"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/members/verify-dues",
+    methods=["POST", "OPTIONS"],
+    include_in_schema=False,
+)
 async def debatehub_api_proxy(request: Request, path: str = ""):
     """Forward DebateHub backend API calls directly to internal Express."""
     return await forward_to_debatehub(request)
+
+# Explicitly namespaced DebateHub API route: /api/debatehub/... forwarded to Express /api/...
+@app.api_route(
+    "/api/debatehub",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+@app.api_route(
+    "/api/debatehub/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    include_in_schema=False,
+)
+async def debatehub_namespaced_proxy(request: Request, path: str = ""):
+    """Explicitly namespaced DebateHub API route: /api/debatehub/... -> forwards to Express /api/..."""
+    return await forward_to_debatehub(request, subpath=f"api/{path}")
+
+@app.get("/api/system/topology", tags=["System Topology"])
+async def get_system_topology():
+    """Returns the live multi-app routing topology, headers, and gateway dispatch rules."""
+    return {
+        "status": "online",
+        "timestamp": time.time(),
+        "routing_dispatcher": {
+            "header": "X-App-Target",
+            "values": ["DebateHub", "Trace", "Orbit"],
+            "apps": [
+                {
+                    "app": "DebateHub",
+                    "role": "GLUK Parliamentary Debate Club Operations Portal",
+                    "engine": "Node.js Express 4.x (Internal Port 3000)",
+                    "prefixes": ["/DebateHub", "/debatehub", "/api/debatehub"],
+                    "exclusive_endpoints": [
+                        "/api/members", "/api/debates", "/api/transactions",
+                        "/api/agendas", "/api/announcements", "/api/events",
+                        "/api/mentorship", "/api/notifications", "/api/live/stream",
+                        "/api/db/init", "/api/db/status", "/api/system/status"
+                    ],
+                    "headers": {"X-App-Target": "DebateHub"}
+                },
+                {
+                    "app": "Trace",
+                    "role": "Edu-AI Adaptive Medical & Academic Engine",
+                    "engine": "FastAPI (Port 7860)",
+                    "prefixes": ["/app", "/student", "/learn", "/admin", "/curriculum", "/signup"],
+                    "exclusive_endpoints": [
+                        "/api/units", "/api/quiz", "/api/chat", "/api/users",
+                        "/api/timetable", "/api/learning", "/api/sync",
+                        "/api/teacher", "/api/parent"
+                    ],
+                    "headers": {"X-App-Target": "Trace"}
+                },
+                {
+                    "app": "Orbit",
+                    "role": "Project Orbit Socratic AI Reasoning Engine",
+                    "engine": "FastAPI Async Orbit Worker + Gemini 2.5",
+                    "prefixes": ["/orbit", "/api/v1/orbit"],
+                    "headers": {"X-App-Target": "Orbit"}
+                }
+            ]
+        }
+    }
 
 class HFSpacePrefixMiddleware:
     def __init__(self, app):
@@ -502,24 +615,35 @@ async def api_key_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-# Real-Time Request and Error Logger Middleware
+# Real-Time Multi-App Request and Error Logger Middleware
 @app.middleware("http")
 async def log_requests_middleware(request: Request, call_next):
     start_time = time.time()
+    target_app, reason = identify_target_app(request)
+    request.state.target_app = target_app
+    request.state.target_reason = reason
+
     try:
         response = await call_next(request)
         process_time_ms = round((time.time() - start_time) * 1000, 2)
         status_code = response.status_code
-        log_msg = f"[BACKEND API] {request.method} {request.url.path} -> {status_code} ({process_time_ms}ms)"
+
+        # Inject multi-app tracking headers
+        response.headers["X-Resolved-App"] = target_app
+        if "X-Processed-By" not in response.headers:
+            response.headers["X-Processed-By"] = f"{target_app}-FastAPI:7860"
+
+        log_msg = f"[{target_app.upper()}] {request.method} {request.url.path} -> {status_code} ({process_time_ms}ms) [{reason}]"
         
-        # Stream into OVERSEER live wiretap buffer
+        # Stream into OVERSEER live wiretap buffer with app tag
         admin.record_live_request(
             method=request.method,
             path=request.url.path,
             status_code=status_code,
             duration_ms=process_time_ms,
             ip=request.client.host if request.client else "local",
-            user_agent=request.headers.get("user-agent", "")
+            user_agent=request.headers.get("user-agent", ""),
+            app=target_app
         )
 
         if status_code >= 500:

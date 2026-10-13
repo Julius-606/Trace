@@ -18,16 +18,16 @@ trap cleanup EXIT INT TERM
 if [[ -f "${DEBATEHUB_DIR}/server.js" ]]; then
   (
     cd "${DEBATEHUB_DIR}"
-    PORT=3000 DEBATEHUB_PORT=3000 node server.js
+    PORT=3000 DEBATEHUB_PORT=3000 NODE_ENV=production node server.js
   ) &
   DEBATEHUB_PID=$!
 elif [[ -f "${DEBATEHUB_DIR}/server.ts" ]]; then
   (
     cd "${DEBATEHUB_DIR}"
     if command -v npx >/dev/null 2>&1; then
-      PORT=3000 DEBATEHUB_PORT=3000 npx tsx server.ts
+      PORT=3000 DEBATEHUB_PORT=3000 NODE_ENV=production npx tsx server.ts
     elif command -v npm >/dev/null 2>&1; then
-      PORT=3000 DEBATEHUB_PORT=3000 npm run dev
+      PORT=3000 DEBATEHUB_PORT=3000 NODE_ENV=production npm run dev
     fi
   ) &
   DEBATEHUB_PID=$!
