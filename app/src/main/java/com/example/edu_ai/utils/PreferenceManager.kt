@@ -140,7 +140,39 @@ object PreferenceManager {
         val prefs = context.getSharedPreferences("edu_ai_inquiries_prefs", Context.MODE_PRIVATE)
         prefs.edit().putString("inquiries_$subtopicId", json).apply()
     }
+
+    // --- SUBTOPIC EXPLANATION REDO & VERSIONING ---
+    fun getSubtopicExplanationVersions(context: Context, subtopicId: Long, stepIndex: Int): List<ExplanationVersion> {
+        val prefs = context.getSharedPreferences("edu_ai_explanations_history", Context.MODE_PRIVATE)
+        val json = prefs.getString("versions_${subtopicId}_$stepIndex", null) ?: return emptyList()
+        return try {
+            val listType = object : com.google.gson.reflect.TypeToken<List<ExplanationVersion>>() {}.type
+            com.google.gson.Gson().fromJson<List<ExplanationVersion>>(json, listType) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun saveSubtopicExplanationVersion(context: Context, subtopicId: Long, stepIndex: Int, version: ExplanationVersion): List<ExplanationVersion> {
+        val existing = getSubtopicExplanationVersions(context, subtopicId, stepIndex).toMutableList()
+        val dupIdx = existing.indexOfFirst { it.content.trim() == version.content.trim() }
+        if (dupIdx >= 0) {
+            return existing
+        }
+        existing.add(version)
+        val prefs = context.getSharedPreferences("edu_ai_explanations_history", Context.MODE_PRIVATE)
+        prefs.edit().putString("versions_${subtopicId}_$stepIndex", com.google.gson.Gson().toJson(existing)).apply()
+        return existing
+    }
 }
+
+data class ExplanationVersion(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val versionNumber: Int = 1,
+    val timestamp: Long = System.currentTimeMillis(),
+    val content: String = "",
+    val tag: String = "Standard"
+)
 
 
  

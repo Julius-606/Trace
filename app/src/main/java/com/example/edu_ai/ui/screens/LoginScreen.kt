@@ -198,12 +198,23 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                     Button(
                         onClick = {
                             TactileFeedback.triggerSubtleClick(context)
-                            isSignUpMode = true
-                            errorMessage = null
+                            val baseUrl = when (backendMode) {
+                                "ngrok" -> "https://untropic-rozanne-noncomprehendingly.ngrok-free.dev/"
+                                "container" -> "http://10.0.2.2:8001/"
+                                else -> BuildConfig.BACKEND_BASE_URL
+                            }
+                            val cleanBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+                            val signupUrl = cleanBase + "signup"
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(signupUrl))
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                errorMessage = "Unable to open browser: ${e.message}"
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isSignUpMode) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            contentColor = if (isSignUpMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            contentColor = if (isSignUpMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
                         ),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
@@ -211,7 +222,49 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                             .height(42.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = if (isSignUpMode) 2.dp else 0.dp)
                     ) {
-                        Text("CREATE ACCOUNT", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("SIGN UP (WEB) ↗", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+            }
+
+            if (!isSignUpMode) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TextButton(
+                        onClick = {
+                            TactileFeedback.triggerSubtleClick(context)
+                            isSignUpMode = true
+                            errorMessage = null
+                        }
+                    ) {
+                        Text(
+                            text = "Need in-app registration? Switch to in-app form",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TextButton(
+                        onClick = {
+                            TactileFeedback.triggerSubtleClick(context)
+                            isSignUpMode = false
+                            errorMessage = null
+                        }
+                    ) {
+                        Text(
+                            text = "← Back to standard Sign In",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -420,28 +473,33 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                                 Text("SIGN IN", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Direct Web Portal Registration Callout
+                        OutlinedButton(
+                            onClick = {
+                                TactileFeedback.triggerSubtleClick(context)
+                                val baseUrl = when (backendMode) {
+                                    "ngrok" -> "https://untropic-rozanne-noncomprehendingly.ngrok-free.dev/"
+                                    "container" -> "http://10.0.2.2:8001/"
+                                    else -> BuildConfig.BACKEND_BASE_URL
+                                }
+                                val cleanBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+                                val signupUrl = cleanBase + "signup"
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(signupUrl))
+                                context.startActivity(intent)
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(46.dp)
+                                .testTag("go_to_web_signup_button")
+                        ) {
+                            Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("New Student? Register on Web Portal ↗", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Fast-Track Admin Console Button
-                OutlinedButton(
-                    onClick = {
-                        TactileFeedback.triggerSubtleClick(context)
-                        PreferenceManager.saveActiveUserId(context, "admin_root")
-                        PreferenceManager.saveToken(context, "admin_fast_track_token")
-                        onLoginSuccess("Admin", "admin_root")
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(46.dp)
-                        .testTag("admin_fast_track_button")
-                ) {
-                    Icon(Icons.Default.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("⚡ Fast-Track: Enter Admin Console", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -461,12 +519,54 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                         modifier = Modifier.padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Text(
-                            text = "New Student Enrollment",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "New Student Enrollment",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            TextButton(
+                                onClick = {
+                                    TactileFeedback.triggerSubtleClick(context)
+                                    val baseUrl = when (backendMode) {
+                                        "ngrok" -> "https://untropic-rozanne-noncomprehendingly.ngrok-free.dev/"
+                                        "container" -> "http://10.0.2.2:8001/"
+                                        else -> BuildConfig.BACKEND_BASE_URL
+                                    }
+                                    val cleanBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+                                    val signupUrl = cleanBase + "signup"
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(signupUrl))
+                                    context.startActivity(intent)
+                                }
+                            ) {
+                                Text("Use Web Page ↗", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        // Guidance Callout
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Registration is actively available on the web portal. You can also test this in-app enrollment preview.",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
 
                         // 1. Full Name
                         OutlinedTextField(
