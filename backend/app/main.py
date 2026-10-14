@@ -47,6 +47,45 @@ try:
         from sqlalchemy import text
         is_postgres = "postgresql" in str(engine.url)
         
+        # 0. Ensure all columns on 'users' table exist (fixes undefined column errors on login)
+        user_columns = [
+            ("username", "VARCHAR(100)"),
+            ("email", "VARCHAR(100)"),
+            ("hashed_password", "VARCHAR(200)"),
+            ("role", "VARCHAR(50) DEFAULT 'Student'"),
+            ("sensory_mode", "VARCHAR(50) DEFAULT 'Standard'"),
+            ("difficulty", "VARCHAR(50) DEFAULT 'Medium (Standard)'"),
+            ("ai_persona", "VARCHAR(100) DEFAULT 'Standard Trace'"),
+            ("semester_status", "VARCHAR(100) DEFAULT 'Year 4 - Redemption Arc'"),
+            ("full_name", "VARCHAR(150)"),
+            ("age", "INTEGER"),
+            ("level_of_study", "VARCHAR(100)"),
+            ("course_pursued", "VARCHAR(150)"),
+            ("referral_code", "VARCHAR(100)"),
+            ("is_email_verified", "BOOLEAN DEFAULT FALSE" if is_postgres else "BOOLEAN DEFAULT 0"),
+            ("interests", "JSON" if is_postgres else "TEXT"),
+        ]
+        for col_name, col_type in user_columns:
+            try:
+                if is_postgres:
+                    init_db.execute(text(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type};"))
+                else:
+                    init_db.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type};"))
+                init_db.commit()
+            except Exception as err:
+                init_db.rollback()
+
+        try:
+            if is_postgres:
+                init_db.execute(text("CREATE INDEX IF NOT EXISTS ix_users_email ON users(email);"))
+                init_db.execute(text("CREATE INDEX IF NOT EXISTS ix_users_username ON users(username);"))
+            else:
+                init_db.execute(text("CREATE INDEX IF NOT EXISTS ix_users_email ON users(email);"))
+                init_db.execute(text("CREATE INDEX IF NOT EXISTS ix_users_username ON users(username);"))
+            init_db.commit()
+        except Exception:
+            init_db.rollback()
+
         # 1. Ensure all columns on 'bookmarks' table exist (auto-healing schema)
         bookmark_columns = [
             ("type", "VARCHAR(50) DEFAULT 'general'"),
