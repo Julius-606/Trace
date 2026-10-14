@@ -37,7 +37,6 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Android and Gradle build output
-Archives/
 .gradle/
 build/
 captures/
