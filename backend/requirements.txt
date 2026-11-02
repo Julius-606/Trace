@@ -1,35 +1,42 @@
+# ==============================================================================
+# Trace Modular Backend & Project Orbit Requirements
+# Python 3.10+ / 3.11+ Compatibility
+# ==============================================================================
 
-# --- Core API ---
-fastapi==0.109.2
-uvicorn==0.27.1
+# --- Core API & ASGI Server ---
+fastapi>=0.109.2
+uvicorn[standard]>=0.27.1
 aiofiles>=23.2.1
-pydantic
-python-multipart==0.0.9
+pydantic>=2.5.0
+python-multipart>=0.0.9
 
-# --- Database ---
-sqlalchemy>=2.0.51
-greenlet
-psycopg2-binary
-asyncpg
-aiosqlite
-python-dotenv==1.0.1
+# --- Database & Migrations (Dual Neon PostgreSQL + SQLite Engine) ---
+sqlalchemy>=2.0.25
+greenlet>=3.0.0
+psycopg2-binary>=2.9.9
+asyncpg>=0.29.0
+aiosqlite>=0.19.0
+alembic>=1.13.1
+python-dotenv>=1.0.1
 
-# --- Security & Auth ---
-passlib[bcrypt]==1.7.4
-bcrypt==3.2.2
-python-jose[cryptography]==3.3.0
+# --- Security, Cryptography & Auth ---
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0
+python-jose[cryptography]>=3.3.0
 
-# --- AI & Templating ---
-google-genai
+# --- AI, Async GenAI & Rich Content Engine ---
+google-genai>=0.1.0
 google-generativeai>=0.7.2
 httpx>=0.25.0
+
+# --- Background Task Scheduling & Rich Library Cron ---
+apscheduler>=3.10.4
+
+# --- Data Science, System Telemetry & Templating ---
 psutil>=5.9.0
-pandas==2.1.3
+pandas>=2.1.3
 pytz>=2023.3
-jinja2==3.1.3
+jinja2>=3.1.3
 
-# --- Tunneling ---
-pyngrok==7.1.6
-
-
- 
+# --- Developer Tunneling & Utilities ---
+pyngrok>=7.1.6

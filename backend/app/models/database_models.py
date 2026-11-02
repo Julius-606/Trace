@@ -34,11 +34,19 @@ class User(Base):
     bookmarks = relationship("Bookmark", back_populates="owner", cascade="all, delete-orphan")
     recommendations = relationship("Recommendation", back_populates="owner", cascade="all, delete-orphan")
 
+    def __init__(self, **kwargs):
+        active_units_data = kwargs.pop("active_units", None)
+        super().__init__(**kwargs)
+        if active_units_data:
+            for u_name in active_units_data:
+                self.units.append(Unit(name=u_name, is_active=True))
+
     @property
     def active_units_list(self):
         return [u.name for u in self.units if u.is_active]
 
 class Unit(Base):
+
     __tablename__ = "units"
 
     id = Column(Integer, primary_key=True, index=True)

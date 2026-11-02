@@ -54,9 +54,9 @@ jobs:
           git add .
           git commit -m "Auto-sync from Julius-606/Orbit monorepo"
           
-          # Force push to the Hugging Face Space
-          # This completely overwrites the HF Space with ONLY the backend files
-          git push --force https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME master:main
+          # Force push to the Hugging Face Space (handling both master and main default branch names)
+          git branch -M main
+          git push --force https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME HEAD:main
           
           echo "📈 Take Profit Hit! Backend deployed successfully to Hugging Face."
 

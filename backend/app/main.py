@@ -36,8 +36,10 @@ try:
 except ImportError:
     from app import ingestion_engine
 
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
-WEBAPP_DIST_DIR = Path(__file__).resolve().parents[1] / "webapp_dist"
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+templates = Jinja2Templates(directory=str(BACKEND_DIR / "templates"))
+WEBAPP_DIST_DIR = BACKEND_DIR / "webapp_dist"
+
 
 # Safe database initialization on startup
 try:
