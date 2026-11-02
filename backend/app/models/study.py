@@ -8,11 +8,10 @@
 # ==========================================
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, Text
-from sqlalchemy.orm import declarative_base
 from datetime import datetime
 import enum
+from app.db.session import Base
 
-Base = declarative_base()
 
 class BrainRotLevel(enum.Enum):
     CHILL = "chill"           # Just highlighting notes

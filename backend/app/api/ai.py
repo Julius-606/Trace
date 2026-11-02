@@ -72,6 +72,42 @@ def generate_quiz(
         client_outcomes=request.learning_outcomes
     )
 
+    # 1. Instant Cached Retrieval from Pre-Generated DB Library (Task 1.7)
+    query = db.query(models.GeneratedQuizBank).filter(
+        models.GeneratedQuizBank.unit_name.ilike(f"%{request.unit_name}%")
+    )
+    if chosen_subtopic:
+        sub_query = query.filter(
+            (models.GeneratedQuizBank.subtopic_name.ilike(f"%{chosen_subtopic}%")) |
+            (models.GeneratedQuizBank.topic_name.ilike(f"%{chosen_subtopic}%"))
+        )
+        cached_questions = sub_query.limit(5).all()
+    else:
+        cached_questions = query.limit(5).all()
+
+    if cached_questions and len(cached_questions) >= 3:
+        formatted_questions = []
+        for q in cached_questions:
+            # Map into schemas.QuizQuestion format
+            correct_idx = 0
+            if q.options and q.correct_answer in q.options:
+                correct_idx = q.options.index(q.correct_answer)
+            formatted_questions.append(
+                schemas.QuizQuestion(
+                    question_text=q.question,
+                    options=q.options if isinstance(q.options, list) else list(q.options),
+                    correct_option_index=correct_idx,
+                    explanation=q.explanation or "Verified clinical reasoning from the pre-generated curriculum library.",
+                    learning_outcome=q.learning_outcomes[0] if (q.learning_outcomes and len(q.learning_outcomes) > 0) else None
+                )
+            )
+        return schemas.QuizResponse(
+            quiz_title=f"{request.unit_name} - {chosen_subtopic or 'Active Recall'}",
+            questions=formatted_questions,
+            learning_outcomes=learning_outcomes
+        )
+
+    # 2. Fall back to on-demand generation only if the pool is empty
     quiz_data = ai_service.generate_quiz(
         unit_name=request.unit_name,
         student_level=user.semester_status,
@@ -85,7 +121,34 @@ def generate_quiz(
         if "learning_outcomes" not in quiz_data or not quiz_data["learning_outcomes"]:
             quiz_data["learning_outcomes"] = learning_outcomes
 
+        # Asynchronously store new questions into GeneratedQuizBank for future instant hits
+        try:
+            import time
+            for q_obj in quiz_data.get("questions", []):
+                q_text = getattr(q_obj, "question_text", None) or q_obj.get("question_text", "")
+                opts = getattr(q_obj, "options", None) or q_obj.get("options", [])
+                correct_idx = getattr(q_obj, "correct_option_index", 0) or q_obj.get("correct_option_index", 0)
+                corr_ans = opts[correct_idx] if opts and correct_idx < len(opts) else (opts[0] if opts else "")
+                expl = getattr(q_obj, "explanation", "") or q_obj.get("explanation", "")
+                
+                db.add(models.GeneratedQuizBank(
+                    unit_name=request.unit_name,
+                    topic_name=chosen_subtopic,
+                    subtopic_name=chosen_subtopic,
+                    question=q_text,
+                    options=opts,
+                    correct_answer=corr_ans,
+                    explanation=expl,
+                    difficulty="Medium",
+                    learning_outcomes=learning_outcomes,
+                    created_at=time.time()
+                ))
+            db.commit()
+        except Exception:
+            db.rollback()
+
     return quiz_data
+
 
 @router.get("/recommendations/{user_id}", response_model=schemas.RecommendationResponse)
 def get_recommendations(user_id: str, db: Session = Depends(get_db)):

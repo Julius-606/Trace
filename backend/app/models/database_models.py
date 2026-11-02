@@ -255,6 +255,76 @@ class EmailVerificationOTP(Base):
     is_used = Column(Boolean, default=False)
 
 
+# ==============================================================================
+# Trace Rich Library Engine Models (Pre-generation Pools & Auditing)
+# ==============================================================================
+
+class GeneratedQuizBank(Base):
+    """Pre-built quiz questions tagged by node/topic for instant cached serving."""
+    __tablename__ = "generated_quiz_bank"
+
+    id = Column(Integer, primary_key=True, index=True)
+    unit_id = Column(Integer, ForeignKey("units.id", ondelete="CASCADE"), nullable=True, index=True)
+    module_id = Column(Integer, ForeignKey("modules.id", ondelete="CASCADE"), nullable=True, index=True)
+    topic_id = Column(Integer, ForeignKey("topics.id", ondelete="CASCADE"), nullable=True, index=True)
+    subtopic_id = Column(Integer, ForeignKey("subtopics.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    unit_name = Column(String(200), index=True, nullable=False)
+    topic_name = Column(String(200), index=True, nullable=True)
+    subtopic_name = Column(String(200), index=True, nullable=True)
+
+    question = Column(Text, nullable=False)
+    options = Column(JSON, nullable=False) # List of 4 string options
+    correct_answer = Column(String(500), nullable=False)
+    explanation = Column(Text, nullable=True)
+    difficulty = Column(String(50), default="Medium")
+    clinical_scenario = Column(Text, nullable=True)
+    learning_outcomes = Column(JSON, default=list)
+    created_at = Column(Float, nullable=True)
+
+    unit = relationship("Unit")
+    subtopic = relationship("Subtopic")
+
+
+class NodeEnrichment(Base):
+    """Alternative explanations, multi-perspective clinical notes, and inline visual diagrams."""
+    __tablename__ = "node_enrichments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    node_id = Column(Integer, index=True, nullable=False) # Subtopic, Topic, or Unit ID
+    node_type = Column(String(50), index=True, nullable=False) # "subtopic", "topic", "unit"
+    node_name = Column(String(200), index=True, nullable=False)
+
+    intuitive_explanation = Column(Text, nullable=True)
+    technical_explanation = Column(Text, nullable=True)
+    clinical_takeaway = Column(Text, nullable=True)
+
+    diagram_type = Column(String(50), default="mermaid") # "mermaid", "svg", "ascii"
+    diagram_code = Column(Text, nullable=True) # Mermaid chart syntax or SVG element
+    diagram_caption = Column(String(250), nullable=True)
+
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(Float, nullable=True)
+    updated_at = Column(Float, nullable=True)
+
+
+class ContentAuditLog(Base):
+    """Verification status, factual accuracy score, and quality audit flags."""
+    __tablename__ = "content_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    target_type = Column(String(50), index=True, nullable=False) # "quiz", "enrichment", "subtopic"
+    target_id = Column(Integer, index=True, nullable=False)
+    verification_status = Column(String(50), default="pending", index=True) # "verified", "flagged", "pending", "rejected"
+    accuracy_score = Column(Float, default=1.0) # 0.0 to 1.0 (or percentage)
+    flags = Column(JSON, default=list) # Issues, hallucinations, or formatting errors
+    audit_pass = Column(Integer, default=1) # Pass 1 or Pass 2 double-check
+    audited_by = Column(String(100), default="Trace Audit Cron")
+    auditor_notes = Column(Text, nullable=True)
+    created_at = Column(Float, nullable=True)
+
+
+
 
 
  

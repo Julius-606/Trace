@@ -122,7 +122,70 @@ def upload_syllabus(payload: dict, user_id: str, db: Session = Depends(get_db)):
         db.commit()
         created_units.append(new_unit.id)
 
+    # Immediately trigger asynchronous pre-generation pipeline for new units
+    if created_units:
+        try:
+            from app.services.content_pipeline import post_syllabus_event
+            post_syllabus_event(created_units, syllabus_title=payload.get("syllabus_title", "General"))
+        except Exception as e:
+            pass
+
     return {"status": "success", "created_unit_ids": created_units}
+
+@router.get("/enrichment/subtopic/{subtopic_id}", response_model=schemas.NodeEnrichmentResponse)
+def get_subtopic_enrichment(subtopic_id: int, db: Session = Depends(get_db)):
+    """Fetches pre-generated multi-perspective notes and Mermaid diagram for a subtopic."""
+    enrichment = db.query(models.NodeEnrichment).filter(
+        models.NodeEnrichment.node_id == subtopic_id,
+        models.NodeEnrichment.node_type == "subtopic"
+    ).first()
+
+    if not enrichment:
+        subtopic = db.query(models.Subtopic).filter(models.Subtopic.id == subtopic_id).first()
+        if not subtopic:
+            raise HTTPException(status_code=404, detail="Subtopic not found")
+        # On-demand fallback enrichment
+        from app.services.content_pipeline import generate_fallback_diagram
+        diagram = generate_fallback_diagram(subtopic.name, "subtopic")
+        return schemas.NodeEnrichmentResponse(
+            node_id=subtopic.id,
+            node_type="subtopic",
+            node_name=subtopic.name,
+            intuitive_explanation=f"Core intuitive grasp: Understand {subtopic.name} as an interconnected clinical mechanism.",
+            technical_explanation=f"Formal medical science breakdown of {subtopic.name}.",
+            clinical_takeaway=f"Bedside priority: Verify clinical stability and therapeutic response.",
+            diagram_type=diagram["diagram_type"],
+            diagram_code=diagram["diagram_code"],
+            diagram_caption=diagram["diagram_caption"],
+            metadata_json={}
+        )
+
+    return enrichment
+
+@router.get("/quiz-pool/{unit_name}")
+def get_unit_quiz_pool(unit_name: str, db: Session = Depends(get_db)):
+    """Fetches all pre-generated questions stored in the library for this unit."""
+    questions = db.query(models.GeneratedQuizBank).filter(
+        models.GeneratedQuizBank.unit_name.ilike(f"%{unit_name}%")
+    ).all()
+
+    return {
+        "unit_name": unit_name,
+        "total_cached_questions": len(questions),
+        "questions": [
+            {
+                "id": q.id,
+                "subtopic_name": q.subtopic_name,
+                "question": q.question,
+                "options": q.options,
+                "correct_answer": q.correct_answer,
+                "explanation": q.explanation,
+                "difficulty": q.difficulty,
+                "scenario": q.clinical_scenario
+            }
+            for q in questions
+        ]
+    }
 
 @router.post("/quiz/record")
 def record_quiz(history: schemas.QuizRecordRequest, db: Session = Depends(get_db)):
@@ -141,6 +204,7 @@ def record_quiz(history: schemas.QuizRecordRequest, db: Session = Depends(get_db
     db.add(new_record)
     db.commit()
     return {"status": "Success", "message": "Result recorded."}
+
 
 
  

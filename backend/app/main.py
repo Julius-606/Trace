@@ -23,10 +23,11 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.db.session import engine, Base, get_db
 from app.db.orbit_session import initialize_orbit_database
-from app.api import auth, users, ai, teacher, parent, learning, admin
+from app.api import auth, users, ai, teacher, parent, learning, admin, webhooks
 from app.api.v1.api import api_router as orbit_api_router
 from app.core import security
 from app.models import database_models as models
+from app.models import study as orbit_study_models
 from app.schemas import api_schemas as schemas
 from typing import List, Optional, Dict, Any
 import httpx
@@ -241,12 +242,21 @@ app = FastAPI(title="Trace Modular API", version="3.0.0")
 
 
 @app.on_event("startup")
-async def initialize_orbit_schema():
+async def startup_services():
     try:
         await initialize_orbit_database()
         logger.info("Orbit database schema verified successfully.")
     except Exception as exc:
         logger.warning("Orbit database schema initialization deferred: %s", exc)
+
+    # Initialize Trace Rich Library background scheduler (diagrams & quality audit crons)
+    try:
+        from app.core.scheduler import scheduler
+        scheduler.start()
+        logger.info("Trace Rich Library Scheduler started successfully.")
+    except Exception as exc:
+        logger.warning("Scheduler startup warning: %s", exc)
+
 
 # ==============================================================================
 # Multi-App Ingress Router & Dispatcher (Trace vs DebateHub vs Orbit)
@@ -780,6 +790,8 @@ app.include_router(teacher.router, prefix="/api")
 app.include_router(parent.router, prefix="/api")
 app.include_router(learning.router, prefix="/api")
 app.include_router(orbit_api_router, prefix="/api/v1")
+app.include_router(webhooks.router, prefix="/api")
+
 
 # ==============================================================================
 # Web App Module (React Frontend Embedded Directly in FastAPI Backend)

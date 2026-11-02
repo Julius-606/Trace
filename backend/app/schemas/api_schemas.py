@@ -310,5 +310,21 @@ class SyncResponse(BaseModel):
     synced_at: Optional[float] = None
     details: Optional[Dict[str, Any]] = None
 
+class NodeEnrichmentResponse(BaseModel):
+    node_id: int
+    node_type: str
+    node_name: str
+    intuitive_explanation: Optional[str] = None
+    technical_explanation: Optional[str] = None
+    clinical_takeaway: Optional[str] = None
+    diagram_type: Optional[str] = "mermaid"
+    diagram_code: Optional[str] = None
+    diagram_caption: Optional[str] = None
+    metadata_json: Optional[Dict[str, Any]] = None
+
+    class Config:
+        from_attributes = True
+
+
 
  
