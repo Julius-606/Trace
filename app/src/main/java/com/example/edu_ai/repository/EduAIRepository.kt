@@ -54,7 +54,8 @@ class EduAIRepository(
                 role = response.role ?: "Student",
                 sensoryMode = response.sensoryMode ?: "Visual",
                 semesterStatus = response.semesterStatus ?: "Active",
-                aiPersona = response.aiPersona ?: "Socratic Mentor"
+                aiPersona = response.aiPersona ?: "Socratic Mentor",
+                traceCoins = response.traceCoins ?: 200
             )
             insertUserPreservingCredentials(userEntity)
             

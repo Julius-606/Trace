@@ -16,5 +16,6 @@ data class UserEntity(
     val fullName: String? = null,
     val age: Int? = null,
     val coursePursued: String? = null,
-    val referralCode: String? = null
+    val referralCode: String? = null,
+    val traceCoins: Int = 200
 )

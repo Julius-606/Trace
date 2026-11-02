@@ -64,6 +64,7 @@ try:
             ("referral_code", "VARCHAR(100)"),
             ("is_email_verified", "BOOLEAN DEFAULT FALSE" if is_postgres else "BOOLEAN DEFAULT 0"),
             ("interests", "JSON" if is_postgres else "TEXT"),
+            ("trace_coins", "INTEGER DEFAULT 200"),
         ]
         for col_name, col_type in user_columns:
             try:
@@ -158,6 +159,30 @@ try:
                 init_db.execute(text("ALTER TABLE system_releases ADD COLUMN is_mandatory BOOLEAN DEFAULT 0;"))
                 init_db.execute(text("ALTER TABLE system_releases ADD COLUMN min_supported_version_code INTEGER DEFAULT 1;"))
                 init_db.execute(text("ALTER TABLE system_releases ADD COLUMN file_size VARCHAR(50) DEFAULT '14.8 MB';"))
+            init_db.commit()
+        except Exception as err:
+            init_db.rollback()
+
+        # 8. 'trace_coins' column on users (award 200 T coins upon signup and to existing users)
+        try:
+            if is_postgres:
+                init_db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trace_coins INTEGER DEFAULT 200;"))
+                init_db.execute(text("UPDATE users SET trace_coins = 200 WHERE trace_coins IS NULL;"))
+            else:
+                init_db.execute(text("ALTER TABLE users ADD COLUMN trace_coins INTEGER DEFAULT 200;"))
+                init_db.execute(text("UPDATE users SET trace_coins = 200 WHERE trace_coins IS NULL;"))
+            init_db.commit()
+        except Exception as err:
+            init_db.rollback()
+
+        # 9. 'price_t_coins' column on units (assign 20 T coins to all existing units)
+        try:
+            if is_postgres:
+                init_db.execute(text("ALTER TABLE units ADD COLUMN IF NOT EXISTS price_t_coins INTEGER DEFAULT 20;"))
+                init_db.execute(text("UPDATE units SET price_t_coins = 20 WHERE price_t_coins IS NULL;"))
+            else:
+                init_db.execute(text("ALTER TABLE units ADD COLUMN price_t_coins INTEGER DEFAULT 20;"))
+                init_db.execute(text("UPDATE units SET price_t_coins = 20 WHERE price_t_coins IS NULL;"))
             init_db.commit()
         except Exception as err:
             init_db.rollback()
@@ -632,7 +657,7 @@ async def api_key_middleware(request: Request, call_next):
             "/orbit", "/orbit/", "/DebateHub", "/debatehub",
             "/login", "/signup", "/signup.html", "/Edu_AI/signup.html", "/Edu_AI/sign up.html",
             "/api/auth/login", "/api/auth/signup-form", "/api/report-bug",
-            "/ingest", "/delete-unit", "/update-unit"
+            "/ingest", "/delete-unit", "/update-unit", "/archives", "/Archives"
         ]
         or path.startswith("/app")
         or path.startswith("/assets")
@@ -644,6 +669,13 @@ async def api_key_middleware(request: Request, call_next):
         or path.startswith("/delete-unit/")
         or path.startswith("/update-unit/")
         or path.startswith("/api/")
+        or path.startswith("/archives")
+        or path.startswith("/Archives")
+        or path.startswith("/downloads")
+        or path.startswith("/releases")
+        or path.startswith("/download")
+        or path.startswith("/static")
+        or path.startswith("/public")
     ):
         return await call_next(request)
 
@@ -756,26 +788,42 @@ assets_dir = WEBAPP_DIST_DIR / "assets"
 if assets_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="webapp_assets")
 
-# Dedicated Hugging Face Archives Directory Mount
+# Dedicated Modular Downloads Storage (./backend/data/downloads/)
+modular_data_dir = BACKEND_DIR / "data"
+modular_data_dir.mkdir(parents=True, exist_ok=True)
+downloads_dir = modular_data_dir / "downloads"
+downloads_dir.mkdir(parents=True, exist_ok=True)
+
+# Mount both /downloads and /Archives
+app.mount("/downloads", StaticFiles(directory=str(downloads_dir)), name="downloads_static")
 archives_dir = Path("Archives")
 archives_dir.mkdir(parents=True, exist_ok=True)
-backend_archives_dir = Path("backend/Archives")
-backend_archives_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/Archives", StaticFiles(directory=str(archives_dir)), name="archives_static")
 
+@app.get("/downloads/{filename:path}")
 @app.get("/archives/{filename:path}")
 async def download_archive_file(filename: str):
-    """Direct APK and build artifact download from Hugging Face Archives vault."""
+    """Direct APK and miscellaneous build artifact download from modular storage."""
     clean_name = os.path.basename(filename)
-    for search_dir in [Path("Archives"), Path("backend/Archives"), Path(".build-outputs"), Path("app/build/outputs/apk/debug")]:
+    search_dirs = [
+        downloads_dir,
+        Path("backend/data/downloads"),
+        Path("data/downloads"),
+        Path("backend/Archives"),
+        Path("Archives"),
+        Path(".build-outputs"),
+        Path("app/build/outputs/apk/debug")
+    ]
+    for search_dir in search_dirs:
         file_path = search_dir / clean_name
         if file_path.exists() and file_path.is_file():
+            media_type = "application/vnd.android.package-archive" if clean_name.endswith(".apk") else "application/octet-stream"
             return FileResponse(
                 str(file_path),
-                media_type="application/vnd.android.package-archive",
+                media_type=media_type,
                 filename=clean_name
             )
-    raise HTTPException(status_code=404, detail="Archive build artifact not found")
+    raise HTTPException(status_code=404, detail="Requested download file not found in storage")
 
 @app.get("/archives", response_class=HTMLResponse)
 async def public_archives_page(request: Request, db: Session = Depends(get_db)):
@@ -892,18 +940,20 @@ async def handle_ingestion(
     field: Optional[str] = Form(None),
     course: Optional[str] = Form(None),
     unit: Optional[str] = Form(None),
+    price_t_coins: Optional[int] = Form(20),
     db: Session = Depends(get_db)
 ):
     syllabus_data = ingestion_engine.parse_syllabus_markdown(markdown)
     ingestion_engine.save_syllabus_to_db(
         db, syllabus_data, owner_id=None,
-        field=field, course=course, unit_group=unit
+        field=field, course=course, unit_group=unit,
+        price_t_coins=price_t_coins or 20
     )
     admin.notify_admin(
         db=db,
         category="SYSTEM_ALERT",
         title="Syllabus Ingested",
-        message=f"Admin ingested syllabus: {syllabus_data.get('syllabus_title', 'General')}.",
+        message=f"Admin ingested syllabus: {syllabus_data.get('syllabus_title', 'General')} (Value: {price_t_coins or 20} T coins).",
         level="info"
     )
     return RedirectResponse(url="/admin/catalogue", status_code=303)
@@ -914,21 +964,45 @@ async def handle_delete_unit(request: Request, unit_id: int, db: Session = Depen
     return RedirectResponse(url="/admin/catalogue", status_code=303)
 
 @app.post("/update-unit/{unit_id}", response_class=HTMLResponse)
-async def handle_update_unit(request: Request, unit_id: int, name: str = Form(...), db: Session = Depends(get_db)):
-    ingestion_engine.update_unit(db, unit_id, name)
+async def handle_update_unit(
+    request: Request,
+    unit_id: int,
+    name: str = Form(...),
+    price_t_coins: Optional[int] = Form(None),
+    db: Session = Depends(get_db)
+):
+    ingestion_engine.update_unit(db, unit_id, name, price_t_coins=price_t_coins)
     return RedirectResponse(url="/admin/catalogue", status_code=303)
 
 @app.post("/api/units/library/add/{unit_id}")
 async def add_unit_to_user(unit_id: int, user_id: int, db: Session = Depends(get_db)):
-    new_unit = ingestion_engine.clone_unit_to_user(db, unit_id, user_id)
-    if new_unit:
-        return {"status": "success", "unit_id": new_unit.id}
-    return JSONResponse(status_code=404, content={"detail": "Unit not found"})
+    try:
+        new_unit = ingestion_engine.clone_unit_to_user(db, unit_id, user_id)
+        if new_unit:
+            user = db.query(models.User).filter(models.User.id == user_id).first()
+            return {
+                "status": "success",
+                "unit_id": new_unit.id,
+                "price_t_coins": new_unit.price_t_coins or 20,
+                "trace_coins": user.trace_coins if user and user.trace_coins is not None else 200
+            }
+        return JSONResponse(status_code=404, content={"detail": "Unit not found"})
+    except ValueError as ve:
+        return JSONResponse(status_code=400, content={"detail": str(ve)})
 
 @app.get("/api/units/library")
 async def get_library_units(db: Session = Depends(get_db)):
     units = ingestion_engine.get_global_units(db)
-    return [{"id": u.id, "name": u.name, "category": u.category} for u in units]
+    return [
+        {
+            "id": u.id,
+            "name": u.name,
+            "category": u.category,
+            "course": u.course,
+            "price_t_coins": u.price_t_coins or 20
+        }
+        for u in units
+    ]
 
 # Public Signup routes (supporting direct /signup, /signup.html, /Edu_AI/signup.html, etc.)
 @app.get("/signup", response_class=HTMLResponse)
@@ -1020,7 +1094,8 @@ async def handle_browser_signup(
         course_pursued=course_pursued,
         referral_code=referral_code,
         semester_status=level_of_study or "Year 1",
-        is_email_verified=bool(otp)
+        is_email_verified=bool(otp),
+        trace_coins=200
     )
     db.add(new_user)
     db.commit()

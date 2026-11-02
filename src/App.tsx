@@ -20,7 +20,8 @@ import {
   Battery,
   Home,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  Coins
 } from 'lucide-react';
 import { User, Unit, UserRole } from './types';
 import { TraceStore } from './lib/store';
@@ -178,7 +179,8 @@ export const App: React.FC = () => {
             semesterStatus: data.user.semesterStatus || 'Active',
             aiPersona: data.user.aiPersona || 'Helper',
             sensoryMode: data.user.sensoryMode || 'Standard',
-            activeUnits: data.user.activeUnits || []
+            activeUnits: data.user.activeUnits || [],
+            traceCoins: data.user.trace_coins ?? data.user.traceCoins ?? (data.user.role === 'Admin' ? 500 : 200)
           };
           setUser(updatedUser);
           TraceStore.setUser(updatedUser);
@@ -530,12 +532,15 @@ export const App: React.FC = () => {
             <span className="hidden sm:inline">Admin</span>
           </button>
 
+          {/* Trace Coin Balance Display */}
           <button
-            onClick={() => setIsSyncOpen(true)}
-            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-emerald-300"
-            title="Settings & Sync"
+            onClick={() => setIsAccountOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-amber-600/10 border border-amber-500/30 text-amber-300 font-extrabold text-xs shadow-sm hover:border-amber-400/60 hover:bg-amber-500/20 transition-all select-none cursor-pointer"
+            title={`Trace Coin Balance: ${user.traceCoins ?? 200} T Coins. Tap to view profile.`}
           >
-            <Settings className="w-4 h-4" />
+            <Coins className="w-3.5 h-3.5 text-amber-400 drop-shadow" />
+            <span className="font-mono tracking-tight font-black">{user.traceCoins ?? 200}</span>
+            <span className="text-[10px] text-amber-400/80 font-bold">T</span>
           </button>
 
           <button

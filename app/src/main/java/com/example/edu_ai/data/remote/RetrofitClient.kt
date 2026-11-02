@@ -19,6 +19,8 @@ object RetrofitClient {
     private const val FALLBACK_URL = BuildConfig.FALLBACK_BACKEND_BASE_URL
     private const val INTERNAL_API_KEY = BuildConfig.INTERNAL_API_KEY
 
+    fun getBaseUrl(): String = currentBaseUrl
+
     private var context: Context? = null
 
     fun init(context: Context) {

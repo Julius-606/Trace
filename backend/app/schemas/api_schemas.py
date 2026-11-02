@@ -6,6 +6,7 @@ class UnitBase(BaseModel):
     name: str
     is_active: bool = True
     category: str = "General"
+    price_t_coins: int = 20
 
 class UnitCreate(UnitBase):
     owner_id: int
@@ -14,6 +15,7 @@ class UnitUpdate(BaseModel):
     name: Optional[str] = None
     is_active: Optional[bool] = None
     category: Optional[str] = None
+    price_t_coins: Optional[int] = None
 
 class LearningObjectiveResponse(BaseModel):
     id: int
@@ -74,6 +76,7 @@ class DashboardResponse(BaseModel):
     total_quizzes: int
     quiz_history: List[QuizHistoryResponse]
     chat_history: List[ChatMessageResponse]
+    trace_coins: int = 200
 
 class ChaosRequest(BaseModel):
     unit: str
@@ -145,6 +148,7 @@ class UserResponseSchema(BaseModel):
     semester_status: str
     interests: List[str]
     active_units: List[str] = []
+    trace_coins: int = 200
 
     class Config:
         from_attributes = True

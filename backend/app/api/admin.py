@@ -536,6 +536,7 @@ async def admin_ingestion_post(
     field: Optional[str] = Form(None, description="Academic field or category (e.g., Medicine, Clinical Sciences)"),
     course: Optional[str] = Form(None, description="Course name (e.g., MBChB, General Surgery)"),
     unit_group: Optional[str] = Form(None, description="Optional unit group name (e.g., Cardiovascular Systems)"),
+    price_t_coins: Optional[int] = Form(20, description="Unit price in Trace Coins (T)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -554,6 +555,7 @@ async def admin_ingestion_post(
     field_val = field or "General"
     course_val = course or "Core Sciences"
     unit_group_val = unit_group
+    price_val = price_t_coins if price_t_coins is not None else 20
 
     # Support JSON request bodies from Swagger or REST clients
     if request.headers.get("content-type", "").startswith("application/json"):
@@ -563,6 +565,7 @@ async def admin_ingestion_post(
             field_val = body.get("field") or body.get("category") or field_val
             course_val = body.get("course") or course_val
             unit_group_val = body.get("unit_group") or unit_group_val
+            price_val = body.get("price_t_coins") or body.get("t_coins") or body.get("price") or price_val
         except Exception:
             pass
 
@@ -578,14 +581,15 @@ async def admin_ingestion_post(
         owner_id=None,
         field=field_val,
         course=course_val,
-        unit_group=unit_group_val
+        unit_group=unit_group_val,
+        price_t_coins=int(price_val)
     )
 
     notify_admin(
         db=db,
         category="SYSTEM_ALERT",
         title="Syllabus Ingested",
-        message=f"Ingested syllabus: '{syllabus_data.get('syllabus_title', 'General')}' into Field: {field_val} / Course: {course_val}.",
+        message=f"Ingested syllabus: '{syllabus_data.get('syllabus_title', 'General')}' into Field: {field_val} / Course: {course_val} (Value: {price_val} T coins).",
         level="info"
     )
 
@@ -597,6 +601,7 @@ async def admin_ingestion_post(
             "field": field_val,
             "course": course_val,
             "unit_group": unit_group_val,
+            "price_t_coins": int(price_val),
             "units_ingested_count": len(syllabus_data.get("units", []))
         })
 
@@ -625,6 +630,7 @@ async def admin_bulk_unit_update(
     field: Optional[str] = Form(None),
     course: Optional[str] = Form(None),
     unit_group: Optional[str] = Form(None),
+    price_t_coins: Optional[int] = Form(None),
     db: Session = Depends(get_db)
 ):
     if not is_authenticated_admin(request, db):
@@ -641,6 +647,8 @@ async def admin_bulk_unit_update(
                     unit.course = course.strip()
                 if unit_group and unit_group.strip():
                     unit.unit_group = unit_group.strip()
+                if price_t_coins is not None:
+                    unit.price_t_coins = int(price_t_coins)
             db.commit()
             notify_admin(
                 db=db,
@@ -662,6 +670,7 @@ async def admin_unit_update(
     field: str = Form("General"),
     course: str = Form("General"),
     unit_group: Optional[str] = Form(None),
+    price_t_coins: Optional[int] = Form(None),
     db: Session = Depends(get_db)
 ):
     unit = db.query(models.Unit).filter(models.Unit.id == unit_id).first()
@@ -672,6 +681,8 @@ async def admin_unit_update(
     unit.category = field
     unit.course = course
     unit.unit_group = unit_group or name
+    if price_t_coins is not None:
+        unit.price_t_coins = int(price_t_coins)
     db.commit()
 
     return RedirectResponse(url=f"/admin/units/{unit_id}", status_code=303)
@@ -879,21 +890,21 @@ async def admin_create_release(
         if not safe_name.lower().endswith(".apk"):
             safe_name += ".apk"
 
+        downloads_dir = Path("backend/data/downloads")
+        downloads_dir.mkdir(parents=True, exist_ok=True)
         archives_dir = Path("Archives")
         archives_dir.mkdir(parents=True, exist_ok=True)
-        backend_archives_dir = Path("backend/Archives")
-        backend_archives_dir.mkdir(parents=True, exist_ok=True)
 
         contents = await apk_file.read()
-        target_path = archives_dir / safe_name
+        target_path = downloads_dir / safe_name
         target_path.write_bytes(contents)
 
-        backend_target_path = backend_archives_dir / safe_name
-        backend_target_path.write_bytes(contents)
+        # Also mirror to Archives for legacy paths
+        (archives_dir / safe_name).write_bytes(contents)
 
         size_mb = len(contents) / (1024 * 1024)
         file_size = f"{size_mb:.1f} MB"
-        download_url = f"/Archives/{safe_name}"
+        download_url = f"/downloads/{safe_name}"
 
     if not file_size:
         file_size = "14.8 MB"

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import com.example.edu_ai.data.remote.ApiAppRelease
+import com.example.edu_ai.data.remote.RetrofitClient
 import com.example.edu_ai.repository.EduAIRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -78,7 +79,16 @@ object UpdateManager {
 
     fun openDownloadUrl(context: Context, url: String) {
         try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            val resolvedUrl = if (url.startsWith("/")) {
+                val base = RetrofitClient.getBaseUrl().trimEnd('/')
+                "$base$url"
+            } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                val base = RetrofitClient.getBaseUrl().trimEnd('/')
+                "$base/$url"
+            } else {
+                url
+            }
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(resolvedUrl)).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(intent)

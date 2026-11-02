@@ -62,7 +62,7 @@ def parse_syllabus_markdown(text):
 
     return syllabus
 
-def save_syllabus_to_db(db: Session, syllabus_data: dict, owner_id=None, field=None, course=None, unit_group=None):
+def save_syllabus_to_db(db: Session, syllabus_data: dict, owner_id=None, field=None, course=None, unit_group=None, price_t_coins=20):
     """
     Saves parsed syllabus data into the database.
     If owner_id is None, it's a global/available unit.
@@ -71,6 +71,7 @@ def save_syllabus_to_db(db: Session, syllabus_data: dict, owner_id=None, field=N
     category_val = (field.strip() if field and field.strip() else None) or syllabus_data.get("syllabus_title") or ("Global" if owner_id is None else "Personal")
     course_val = (course.strip() if course and course.strip() else None) or "Core Sciences"
     group_val = unit_group.strip() if unit_group and unit_group.strip() else None
+    coin_price = int(price_t_coins if price_t_coins is not None else 20)
 
     for unit_data in syllabus_data.get("units", []):
         db_unit = models.Unit(
@@ -78,7 +79,8 @@ def save_syllabus_to_db(db: Session, syllabus_data: dict, owner_id=None, field=N
             owner_id=owner_id,
             category=category_val,
             course=course_val,
-            unit_group=group_val or unit_data["unit_title"]
+            unit_group=group_val or unit_data["unit_title"],
+            price_t_coins=coin_price
         )
         db.add(db_unit)
         db.flush()
@@ -115,10 +117,12 @@ def delete_unit(db: Session, unit_id: int):
         return True
     return False
 
-def update_unit(db: Session, unit_id: int, name: str):
+def update_unit(db: Session, unit_id: int, name: str, price_t_coins: int = None):
     unit = db.query(models.Unit).filter(models.Unit.id == unit_id).first()
     if unit:
         unit.name = name
+        if price_t_coins is not None:
+            unit.price_t_coins = int(price_t_coins)
         db.commit()
         return True
     return False
@@ -126,16 +130,43 @@ def update_unit(db: Session, unit_id: int, name: str):
 def clone_unit_to_user(db: Session, unit_id: int, user_id: int):
     """
     Clones a global unit (and its hierarchy) to a specific user.
+    Grandfathers previously enrolled units without charging.
+    For new enrollments, verifies Trace coin balance and deducts unit cost.
     """
     global_unit = db.query(models.Unit).filter(models.Unit.id == unit_id).first()
     if not global_unit:
         return None
 
-    # Create new Unit
+    # Check if user already owns/has this unit grandfathered
+    existing_unit = db.query(models.Unit).filter(
+        models.Unit.owner_id == user_id,
+        models.Unit.name == global_unit.name
+    ).first()
+
+    if existing_unit:
+        # Grandfathered: already enrolled, ensure active, no additional coin deduction
+        existing_unit.is_active = True
+        db.commit()
+        db.refresh(existing_unit)
+        return existing_unit
+
+    # Check coin balance and deduct for new enrollment
+    unit_cost = global_unit.price_t_coins if global_unit.price_t_coins is not None else 20
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        current_coins = user.trace_coins if user.trace_coins is not None else 200
+        if current_coins < unit_cost:
+            raise ValueError(f"Insufficient Trace coins. Required: {unit_cost} T, Available: {current_coins} T")
+        user.trace_coins = current_coins - unit_cost
+
+    # Create new Unit for user
     new_unit = models.Unit(
         name=global_unit.name,
         owner_id=user_id,
-        category="Ongoing"
+        category="Ongoing",
+        course=global_unit.course or "Core Sciences",
+        unit_group=global_unit.unit_group or global_unit.name,
+        price_t_coins=unit_cost
     )
     db.add(new_unit)
     db.flush()

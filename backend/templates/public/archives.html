@@ -96,7 +96,7 @@
                 </div>
 
                 <div class="flex flex-col gap-3 justify-center">
-                    {% set dl = latest_release.download_url or '/Archives/Trace-v1.0.0-release.apk' %}
+                    {% set dl = latest_release.download_url or '/downloads/Trace-v1.0.0-release.apk' %}
                     <a href="{{ dl }}" download class="w-full text-center py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 transition flex items-center justify-center gap-2">
                         <span>📥 Download Android APK</span>
                     </a>
@@ -130,7 +130,7 @@
                     </div>
                     <div class="flex items-center gap-4">
                         <span class="text-xs text-slate-400">{{ r.file_size or '20.0 MB' }}</span>
-                        {% set r_dl = r.download_url or '/Archives/Trace-v1.0.0-release.apk' %}
+                        {% set r_dl = r.download_url or '/downloads/Trace-v1.0.0-release.apk' %}
                         <a href="{{ r_dl }}" download class="text-xs font-bold px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-sm">
                             <span>📥 Download APK</span>
                         </a>
@@ -151,7 +151,7 @@
             <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-12 text-center text-slate-400 space-y-3">
                 <p class="text-sm">No archived releases logged in the database yet.</p>
                 <div>
-                    <a href="/Archives/Trace-v1.0.0-release.apk" class="text-xs font-bold px-4 py-2 rounded-xl bg-indigo-600 text-white inline-flex items-center gap-2">
+                    <a href="/downloads/Trace-v1.0.0-release.apk" class="text-xs font-bold px-4 py-2 rounded-xl bg-indigo-600 text-white inline-flex items-center gap-2">
                         <span>📥 Download Default Build (v1.0.0)</span>
                     </a>
                 </div>

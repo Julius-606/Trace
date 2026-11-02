@@ -389,6 +389,7 @@ async def api_json_signup(request: Request, db: Session = Depends(get_db)):
         semester_status=semester_status,
         is_email_verified=True,
         interests=user_in.interests or [],
+        trace_coins=200,
         active_units=["Biochemistry II", "General Surgery", "Internal Medicine"]
     )
     db.add(new_user)
@@ -528,7 +529,8 @@ async def handle_signup(
         course_pursued=course_pursued,
         referral_code=referral_code,
         semester_status=level_of_study or "Year 1",
-        is_email_verified=bool(otp)
+        is_email_verified=bool(otp),
+        trace_coins=200
     )
     db.add(new_user)
     db.commit()

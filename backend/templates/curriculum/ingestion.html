@@ -55,6 +55,18 @@
                         <input id="field-value" type="hidden" name="field">
                         <input id="course-value" type="hidden" name="course">
                         <input id="unit-value" type="hidden" name="unit">
+
+                        <div>
+                            <label class="block text-xs font-bold text-indigo-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                <span>🪙</span>
+                                <span>Unit Value in Trace Coins (T Coins)</span>
+                            </label>
+                            <input id="price-t-coins" type="number" name="price_t_coins" value="20" min="0" required
+                                placeholder="Unit value in T Coins (e.g. 20)"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition font-semibold text-white">
+                            <p class="text-[11px] text-slate-400 mt-1">Students use their Trace coin balance to add this unit to their dashboard. Standard: 20 T.</p>
+                        </div>
+
                         <textarea name="markdown" rows="12" required
                             placeholder="# Syllabus Title&#10;## General Pathology&#10;### Module Name&#10;#### Topic Name&#10;##### Subtopic Name&#10;- Objective"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition font-mono"></textarea>

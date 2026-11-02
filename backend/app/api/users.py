@@ -22,6 +22,7 @@ def find_user(user_id_or_name: str, db: Session):
 def user_response(user: models.User) -> schemas.UserResponseSchema:
     response = schemas.UserResponseSchema.model_validate(user)
     response.active_units = user.active_units_list
+    response.trace_coins = user.trace_coins if user.trace_coins is not None else 200
     return response
 
 @router.get("/{user_id}", response_model=schemas.UserResponseSchema)
@@ -31,7 +32,7 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
         # Auto-create logic from main.py
         role = "Student"
         if "teacher" in user_id.lower(): role = "Teacher"
-        user = models.User(username=user_id, role=role)
+        user = models.User(username=user_id, role=role, trace_coins=200)
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -46,7 +47,7 @@ def populate_default_syllabus(db: Session, user_id: int):
 def get_dashboard(user_id: str, db: Session = Depends(get_db)):
     user = find_user(user_id, db)
     if not user:
-        user = models.User(username=user_id, role="Student")
+        user = models.User(username=user_id, role="Student", trace_coins=200)
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -71,7 +72,8 @@ def get_dashboard(user_id: str, db: Session = Depends(get_db)):
         average_pnl=round(average_pnl, 2),
         total_quizzes=total_quizzes,
         quiz_history=[schemas.QuizHistoryResponse(unit_name=q.unit_name, pnl=q.pnl, timestamp=q.timestamp) for q in quizzes],
-        chat_history=[schemas.ChatMessageResponse(role=c.role, content=c.content, timestamp=c.timestamp or "") for c in chat_messages]
+        chat_history=[schemas.ChatMessageResponse(role=c.role, content=c.content, timestamp=c.timestamp or "") for c in chat_messages],
+        trace_coins=user.trace_coins if user.trace_coins is not None else 200
     )
 
 @router.get("/{user_id}/timetable", response_model=schemas.TimetableResponse)
@@ -166,13 +168,32 @@ def update_user(user_id: str, user_update: schemas.UserUpdate, db: Session = Dep
 
     if "active_units" in update_data:
         new_unit_names = update_data.pop("active_units")
+        # Mark currently active units as inactive initially
         db.query(models.Unit).filter(models.Unit.owner_id == user.id).update({"is_active": False})
         for name in new_unit_names:
             existing_unit = db.query(models.Unit).filter(models.Unit.owner_id == user.id, models.Unit.name == name).first()
             if existing_unit:
+                # Grandfathered: already possessed, activate without any deduction
                 existing_unit.is_active = True
             else:
-                db.add(models.Unit(name=name, owner_id=user.id, is_active=True))
+                # Newly added unit: find price in global catalog
+                global_unit = db.query(models.Unit).filter(models.Unit.owner_id.is_(None), models.Unit.name == name).first()
+                cost = global_unit.price_t_coins if (global_unit and global_unit.price_t_coins is not None) else 20
+                current_balance = user.trace_coins if user.trace_coins is not None else 200
+                if current_balance < cost:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Insufficient Trace coins for unit '{name}'. Required: {cost} T, Available: {current_balance} T."
+                    )
+                user.trace_coins = current_balance - cost
+                db.add(models.Unit(
+                    name=name,
+                    owner_id=user.id,
+                    is_active=True,
+                    category=global_unit.category if global_unit else "General",
+                    course=global_unit.course if global_unit else "General",
+                    price_t_coins=cost
+                ))
 
     for key, value in update_data.items():
         setattr(user, key, value)

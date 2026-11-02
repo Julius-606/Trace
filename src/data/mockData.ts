@@ -10,7 +10,8 @@ export const INITIAL_USERS: User[] = [
     semesterStatus: "Year 4 - Clinical Rotations",
     aiPersona: "Socratic Tutor",
     sensoryMode: "Standard",
-    activeUnits: ["Biochemistry II", "General Surgery", "Internal Medicine"]
+    activeUnits: ["Biochemistry II", "General Surgery", "Internal Medicine"],
+    traceCoins: 200
   },
   {
     id: "2",
@@ -21,7 +22,8 @@ export const INITIAL_USERS: User[] = [
     semesterStatus: "Department of Clinical Sciences",
     aiPersona: "Pedagogical Report Assistant",
     sensoryMode: "Faculty",
-    activeUnits: ["Biochemistry II", "General Surgery", "Internal Medicine"]
+    activeUnits: ["Biochemistry II", "General Surgery", "Internal Medicine"],
+    traceCoins: 200
   },
   {
     id: "3",
@@ -32,7 +34,8 @@ export const INITIAL_USERS: User[] = [
     semesterStatus: "Guardian Dashboard",
     aiPersona: "Supportive Education Consultant",
     sensoryMode: "Standard",
-    activeUnits: ["Biochemistry II", "General Surgery", "Internal Medicine"]
+    activeUnits: ["Biochemistry II", "General Surgery", "Internal Medicine"],
+    traceCoins: 200
   },
   {
     id: "4",
@@ -43,7 +46,8 @@ export const INITIAL_USERS: User[] = [
     semesterStatus: "System Administration & Oversight",
     aiPersona: "System Architect & Lead Consultant",
     sensoryMode: "Standard",
-    activeUnits: ["Biochemistry II", "General Surgery", "Internal Medicine", "Pathology & Diagnostics"]
+    activeUnits: ["Biochemistry II", "General Surgery", "Internal Medicine", "Pathology & Diagnostics"],
+    traceCoins: 500
   }
 ];
 

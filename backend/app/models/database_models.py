@@ -22,6 +22,7 @@ class User(Base):
     referral_code = Column(String(100), nullable=True)
     is_email_verified = Column(Boolean, default=False)
     interests = Column(JSON, default=list)
+    trace_coins = Column(Integer, default=200)
 
     # Relationships
     units = relationship("Unit", back_populates="owner", cascade="all, delete-orphan")
@@ -47,6 +48,7 @@ class Unit(Base):
     course = Column(String(100), default="General")
     unit_group = Column(String(100), nullable=True)
     learning_outcomes = Column(Text, nullable=True)
+    price_t_coins = Column(Integer, default=20)
 
     owner_id = Column(Integer, ForeignKey("users.id"))
     owner = relationship("User", back_populates="units")

@@ -16,7 +16,8 @@ data class DashboardResponse(
     @SerializedName("average_pnl") val averagePnl: Double? = null,
     @SerializedName("total_quizzes") val totalQuizzes: Int? = null,
     @SerializedName("quiz_history") val quizHistory: List<ApiQuizHistory>? = null,
-    @SerializedName("chat_history") val chatHistory: List<ApiChatHistory>? = null
+    @SerializedName("chat_history") val chatHistory: List<ApiChatHistory>? = null,
+    @SerializedName("trace_coins") val traceCoins: Int? = 200
 )
 
 data class ApiUnit(

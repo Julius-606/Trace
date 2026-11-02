@@ -206,7 +206,7 @@
                     </div>
 
                     <div class="flex flex-col gap-2.5">
-                        {% set download_target = latest_release.download_url if (latest_release and latest_release.download_url) else '/Archives/Trace-v1.0.0-release.apk' %}
+                        {% set download_target = latest_release.download_url if (latest_release and latest_release.download_url) else '/downloads/Trace-v1.0.0-release.apk' %}
                         <a href="{{ download_target }}" download class="w-full text-center py-3 px-5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
                             <span>📥 Download APK Build</span>
                         </a>

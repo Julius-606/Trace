@@ -10,6 +10,7 @@ export interface User {
   aiPersona: string;
   sensoryMode?: string;
   activeUnits: string[];
+  traceCoins?: number;
 }
 
 export interface SubtopicObjective {

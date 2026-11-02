@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, Sparkles, User as UserIcon } from 'lucide-react';
+import { X, Check, Sparkles, User as UserIcon, Coins } from 'lucide-react';
 import { User } from '../types';
 
 interface AccountModalProps {
@@ -55,6 +55,22 @@ export const AccountModal: React.FC<AccountModalProps> = ({ user, onClose, onSav
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Trace Coin Wallet Display */}
+          <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-600/10 to-amber-700/10 border border-amber-500/25 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                <Coins className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400/80">Trace Coin Balance</div>
+                <div className="text-xs text-slate-300">Used for unit ingestion & premium unlocks</div>
+              </div>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="font-mono text-xl font-black text-amber-300">{user.traceCoins ?? 200}</span>
+              <span className="text-xs font-bold text-amber-400">T</span>
+            </div>
+          </div>
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
               Full Name

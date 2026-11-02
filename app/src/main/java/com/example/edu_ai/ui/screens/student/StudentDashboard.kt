@@ -307,8 +307,33 @@ fun StudentDashboard(
                                     Icon(Icons.Default.Bookmark, contentDescription = "Saved Bookmarks", tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
-                            IconButton(onClick = onOpenSettings) {
-                                Icon(Icons.Default.Settings, contentDescription = "Settings & Updates", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            // Trace Coin Balance replacing settings gear
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .clickable(onClick = onOpenSettings)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.MonetizationOn,
+                                        contentDescription = "Trace Coins",
+                                        tint = Color(0xFFFFB300),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "${user.traceCoins} T",
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
@@ -512,6 +537,7 @@ fun StudentDashboardContent(
     val currentDateStr = remember {
         SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date())
     }
+    var isUnitsExpanded by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -814,17 +840,54 @@ fun StudentDashboardContent(
         // 4. LEARNING "PROGRESS" - CONCENTRIC RINGS & ACTIVE UNITS
         // =================================================================
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isUnitsExpanded = !isUnitsExpanded },
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.School, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Curriculum Progress", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.School, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text("Curriculum Progress", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                            Text(
+                                if (isUnitsExpanded) "Units expanded • Tap to collapse" else "Units collapsed • Tap to view active units",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "${uiState.unitsWithModules.size} Active",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = if (isUnitsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isUnitsExpanded) "Collapse units" else "Expand units",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
-                Text("${uiState.unitsWithModules.size} Active Units", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
             }
         }
 
@@ -853,15 +916,48 @@ fun StudentDashboardContent(
             }
         }
 
-        // Concentric Rings Unit Cards grouped by Exact Field -> Course -> Unit Group
-        val groupedByField = uiState.unitsWithModules.groupBy { it.unit.exactFieldName }
-        groupedByField.forEach { (fieldName, fieldUnits) ->
+        // Collapsed summary preview card when units are collapsed
+        if (!isUnitsExpanded && uiState.unitsWithModules.isNotEmpty()) {
             item {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 10.dp, bottom = 4.dp),
+                        .clickable { isUnitsExpanded = true },
                     shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "${uiState.unitsWithModules.size} units enrolled. Tap to expand curriculum view.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Expand",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Concentric Rings Unit Cards grouped by Exact Field -> Course -> Unit Group (visible when expanded)
+        if (isUnitsExpanded) {
+            val groupedByField = uiState.unitsWithModules.groupBy { it.unit.exactFieldName }
+            groupedByField.forEach { (fieldName, fieldUnits) ->
+                item {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, bottom = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 ) {
@@ -1010,6 +1106,7 @@ fun StudentDashboardContent(
                     }
                 }
             }
+        }
         }
         
         item { Spacer(modifier = Modifier.height(32.dp)) }
