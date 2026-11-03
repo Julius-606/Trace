@@ -81,7 +81,17 @@ export const App: React.FC = () => {
     try {
       const res = await fetch(`/api/user/${userId}/sync`);
       if (res.ok) {
-        const data = await res.json();
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          return;
+        }
+        let data: any;
+        try {
+          data = await res.json();
+        } catch {
+          return;
+        }
+        if (!data) return;
         
         if (data.progress && data.progress.length > 0) {
           const localUnits = TraceStore.getUnits();
@@ -216,17 +226,21 @@ export const App: React.FC = () => {
         timestamp: b.timestamp / 1000 || Date.now() / 1000
       }));
 
-      await fetch(`/api/user/${userId}/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          progress: progressItems,
-          bookmarks: bookmarksItems
-        })
-      });
+      try {
+        await fetch(`/api/user/${userId}/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            progress: progressItems,
+            bookmarks: bookmarksItems
+          })
+        });
+      } catch {
+        // Offline or sandbox note - local state already saved
+      }
 
     } catch (err) {
-      console.error("Cloud synchronization failed:", err);
+      console.warn("Cloud synchronization fallback notice (running offline-first):", err);
     }
   };
 

@@ -259,6 +259,15 @@ async def startup_services():
     except Exception as exc:
         logger.warning("Scheduler startup warning: %s", exc)
 
+    # Start the decoupled asynchronous content pipeline message queue worker
+    try:
+        from app.services.content_pipeline import ensure_worker_running
+        ensure_worker_running()
+        logger.info("Content Pipeline Message Queue Worker initialized.")
+    except Exception as exc:
+        logger.warning("Pipeline Worker initialization warning: %s", exc)
+
+
 
 # ==============================================================================
 # Multi-App Ingress Router & Dispatcher (Trace vs DebateHub vs Orbit)

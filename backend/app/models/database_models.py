@@ -332,6 +332,26 @@ class ContentAuditLog(Base):
     created_at = Column(Float, nullable=True)
 
 
+class UnitPipelineProgress(Base):
+    """Tracks real-time background content build-up (quizzes, enrichments, diagrams) per unit."""
+    __tablename__ = "unit_pipeline_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    unit_id = Column(Integer, ForeignKey("units.id", ondelete="CASCADE"), unique=True, index=True)
+    unit_name = Column(String(200), index=True)
+    status = Column(String(50), default="queued", index=True) # "queued", "processing", "completed", "failed", "idle"
+    total_subtopics = Column(Integer, default=0)
+    completed_subtopics = Column(Integer, default=0)
+    quizzes_generated = Column(Integer, default=0)
+    diagrams_generated = Column(Integer, default=0)
+    current_step = Column(String(250), nullable=True)
+    progress_percent = Column(Float, default=0.0)
+    started_at = Column(Float, nullable=True)
+    completed_at = Column(Float, nullable=True)
+    error_message = Column(Text, nullable=True)
+
+
+
 
 
 

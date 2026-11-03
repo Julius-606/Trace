@@ -341,17 +341,71 @@
                                 </div>
                                 <div class="grid gap-2">
                                 {% for unit in group.units %}
-                                    <div class="flex items-center justify-between rounded-xl bg-slate-950 px-4 py-2.5 border border-slate-800/60 hover:border-indigo-500/40 transition">
-                                        <div class="flex items-center gap-3">
-                                            <input type="checkbox" class="unit-select-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-950" value="{{ unit.id }}" onchange="onUnitSelectChange()">
-                                            <div>
-                                                <a href="/admin/units/{{ unit.id }}" class="text-sm font-semibold text-slate-200 hover:text-indigo-300">{{ unit.name }}</a>
-                                                <span class="text-xs text-slate-500 ml-2">({{ unit.modules|length }} modules)</span>
+                                    <div id="unit-row-{{ unit.id }}" class="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-xl bg-slate-950 p-4 border border-slate-800/80 hover:border-indigo-500/50 transition">
+                                        <div class="flex items-start gap-3 flex-1 min-w-0">
+                                            <input type="checkbox" class="unit-select-checkbox mt-1 w-4 h-4 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-950" value="{{ unit.id }}" onchange="onUnitSelectChange()">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <a href="/admin/units/{{ unit.id }}" class="text-sm font-bold text-slate-200 hover:text-indigo-300 truncate">{{ unit.name }}</a>
+                                                    <span class="text-xs text-slate-500 font-normal">({{ unit.modules|length }} modules • {{ unit.total_subtopics }} subtopics)</span>
+                                                </div>
+
+                                                <!-- Real-time Status Badge & Step Tracker -->
+                                                <div class="mt-2 flex flex-wrap items-center gap-3">
+                                                    <span id="unit-badge-{{ unit.id }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all
+                                                        {% if unit.pipeline_status == 'completed' %}
+                                                            bg-emerald-500/15 text-emerald-400 border border-emerald-500/30
+                                                        {% elif unit.pipeline_status == 'processing' %}
+                                                            bg-sky-500/15 text-sky-300 border border-sky-500/30 animate-pulse
+                                                        {% elif unit.pipeline_status == 'queued' %}
+                                                            bg-amber-500/15 text-amber-300 border border-amber-500/30
+                                                        {% else %}
+                                                            bg-slate-800 text-slate-400 border border-slate-700
+                                                        {% endif %}">
+                                                        <span id="unit-dot-{{ unit.id }}" class="w-1.5 h-1.5 rounded-full
+                                                            {% if unit.pipeline_status == 'completed' %}
+                                                                bg-emerald-400
+                                                            {% elif unit.pipeline_status == 'processing' %}
+                                                                bg-sky-400 animate-ping
+                                                            {% elif unit.pipeline_status == 'queued' %}
+                                                                bg-amber-400
+                                                            {% else %}
+                                                                bg-slate-500
+                                                            {% endif %}"></span>
+                                                        <span id="unit-status-text-{{ unit.id }}">
+                                                            {% if unit.pipeline_status == 'completed' %}
+                                                                Ready: {{ unit.quizzes_count }} Quizzes • {{ unit.diagrams_count }} Diagrams
+                                                            {% elif unit.pipeline_status == 'processing' %}
+                                                                Building Content: {{ unit.pipeline_completed }}/{{ unit.total_subtopics }} ({{ unit.pipeline_percent }}%)
+                                                            {% elif unit.pipeline_status == 'queued' %}
+                                                                In Pipeline Queue...
+                                                            {% else %}
+                                                                Content Build Pending
+                                                            {% endif %}
+                                                        </span>
+                                                    </span>
+
+                                                    <span id="unit-step-{{ unit.id }}" class="text-[11px] text-slate-400 truncate max-w-xs font-mono">
+                                                        {{ unit.pipeline_step }}
+                                                    </span>
+                                                </div>
+
+                                                <!-- Live Progress Bar -->
+                                                <div id="unit-progress-container-{{ unit.id }}" class="mt-2.5 w-full max-w-md bg-slate-900 rounded-full h-1.5 overflow-hidden {% if unit.pipeline_status != 'processing' %}hidden{% endif %}">
+                                                    <div id="unit-progress-bar-{{ unit.id }}" class="bg-indigo-500 h-1.5 rounded-full transition-all duration-500" style="width: {{ unit.pipeline_percent }}%;"></div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <a href="/admin/units/{{ unit.id }}" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition">Manage Unit &rarr;</a>
+
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <button type="button" onclick="triggerUnitPipeline('{{ unit.id }}', this)" class="text-xs font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+                                                <span>⚡ Build AI Pool</span>
+                                            </button>
+                                            <a href="/admin/units/{{ unit.id }}" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition">Manage Unit &rarr;</a>
+                                        </div>
                                     </div>
                                 {% endfor %}
+
                                 </div>
                             </div>
                             {% endfor %}
@@ -1246,6 +1300,111 @@
     function closeBulkEditModal() {
         const modal = document.getElementById('bulk-edit-modal');
         if (modal) modal.classList.add('hidden');
+    }
+
+    // Dynamic Real-time Ingestion Pipeline Status Poller
+    async function pollPipelineStatus() {
+        try {
+            const res = await fetch('/api/admin/pipeline/status');
+            if (!res.ok) return;
+            const data = await res.json();
+            if (!data.units) return;
+
+            Object.values(data.units).forEach(u => {
+                const badge = document.getElementById(`unit-badge-${u.unit_id}`);
+                const dot = document.getElementById(`unit-dot-${u.unit_id}`);
+                const text = document.getElementById(`unit-status-text-${u.unit_id}`);
+                const step = document.getElementById(`unit-step-${u.unit_id}`);
+                const barContainer = document.getElementById(`unit-progress-container-${u.unit_id}`);
+                const bar = document.getElementById(`unit-progress-bar-${u.unit_id}`);
+
+                if (step && u.current_step) {
+                    step.textContent = u.current_step;
+                }
+                if (bar) {
+                    bar.style.width = `${u.progress_percent}%`;
+                }
+
+                if (u.status === 'processing') {
+                    if (barContainer) barContainer.classList.remove('hidden');
+                    if (badge) {
+                        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all bg-sky-500/15 text-sky-300 border border-sky-500/30 animate-pulse';
+                    }
+                    if (dot) {
+                        dot.className = 'w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping';
+                    }
+                    if (text) {
+                        text.textContent = `Building Content: ${u.completed_subtopics}/${u.total_subtopics} (${u.progress_percent}%)`;
+                    }
+                } else if (u.status === 'completed') {
+                    if (barContainer) barContainer.classList.add('hidden');
+                    if (badge) {
+                        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+                    }
+                    if (dot) {
+                        dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+                    }
+                    if (text) {
+                        text.textContent = `Ready: ${u.quizzes_generated} Quizzes • ${u.diagrams_generated} Diagrams`;
+                    }
+                } else if (u.status === 'queued') {
+                    if (barContainer) barContainer.classList.add('hidden');
+                    if (badge) {
+                        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                    }
+                    if (dot) {
+                        dot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
+                    }
+                    if (text) {
+                        text.textContent = 'In Pipeline Queue...';
+                    }
+                } else if (u.status === 'error') {
+                    if (barContainer) barContainer.classList.add('hidden');
+                    if (badge) {
+                        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all bg-rose-500/15 text-rose-300 border border-rose-500/30';
+                    }
+                    if (dot) {
+                        dot.className = 'w-1.5 h-1.5 rounded-full bg-rose-400';
+                    }
+                    if (text) {
+                        text.textContent = 'Encountered Warning (Check Logs)';
+                    }
+                }
+            });
+        } catch (err) {
+            // Background polling silent catch
+        }
+    }
+
+    // Trigger pipeline on demand for a unit
+    async function triggerUnitPipeline(unitId, btn) {
+        if (!unitId) return;
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            btn.innerHTML = `<span class="animate-spin inline-block mr-1">⏳</span> Triggering...`;
+        }
+        try {
+            const res = await fetch(`/api/admin/pipeline/trigger/${unitId}`, { method: 'POST' });
+            const data = await res.json();
+            await pollPipelineStatus();
+        } catch (err) {
+            console.error('Failed to trigger pipeline:', err);
+        } finally {
+            if (btn) {
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50');
+                    btn.innerHTML = `⚡ Generate Content`;
+                }, 2500);
+            }
+        }
+    }
+
+    // Start polling if on curriculum catalogue page
+    if (document.querySelector('[id^="unit-badge-"]')) {
+        pollPipelineStatus();
+        setInterval(pollPipelineStatus, 3000);
     }
 </script>
 </body>

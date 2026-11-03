@@ -16,7 +16,13 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose, onSnapshotRestore
 
   useEffect(() => {
     fetch('/api/health')
-      .then((res) => res.json())
+      .then((res) => {
+        const ct = res.headers.get('content-type') || '';
+        if (res.ok && ct.includes('application/json')) {
+          return res.json();
+        }
+        throw new Error('Non-JSON response');
+      })
       .then((data) => {
         setServerStatus('online');
         setHasGeminiKey(Boolean(data.hasGeminiKey));
@@ -225,7 +231,13 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose, onSnapshotRestore
                   onClick={() => {
                     setServerStatus('checking');
                     fetch('/api/health')
-                      .then((res) => res.json())
+                      .then((res) => {
+                        const ct = res.headers.get('content-type') || '';
+                        if (res.ok && ct.includes('application/json')) {
+                          return res.json();
+                        }
+                        throw new Error('Non-JSON response');
+                      })
                       .then((d) => {
                         setServerStatus('online');
                         setHasGeminiKey(Boolean(d.hasGeminiKey));

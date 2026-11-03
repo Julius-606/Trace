@@ -116,9 +116,26 @@ def is_authenticated_admin(request: Request, db: Session) -> bool:
 
 
 def build_curriculum_catalog(db: Session) -> List[Dict[str, Any]]:
-    """Builds hierarchical catalog grouped by Field -> Course -> Unit Group -> Units."""
+    """Builds hierarchical catalog grouped by Field -> Course -> Unit Group -> Units with real-time AI build-up telemetry."""
+    from sqlalchemy import func
     units = db.query(models.Unit).filter(models.Unit.owner_id == None).all()
     fields_map: Dict[str, Dict[str, Dict[str, List[Dict[str, Any]]]]] = {}
+
+    # Pre-fetch progress records
+    progress_records = {p.unit_id: p for p in db.query(models.UnitPipelineProgress).all()}
+
+    # Pre-fetch quiz counts
+    quiz_counts_by_id = dict(
+        db.query(models.GeneratedQuizBank.unit_id, func.count(models.GeneratedQuizBank.id))
+        .filter(models.GeneratedQuizBank.unit_id.isnot(None))
+        .group_by(models.GeneratedQuizBank.unit_id)
+        .all()
+    )
+    quiz_counts_by_name = dict(
+        db.query(models.GeneratedQuizBank.unit_name, func.count(models.GeneratedQuizBank.id))
+        .group_by(models.GeneratedQuizBank.unit_name)
+        .all()
+    )
 
     for u in units:
         field_name = u.category or "General"
@@ -132,13 +149,52 @@ def build_curriculum_catalog(db: Session) -> List[Dict[str, Any]]:
         if group_name not in fields_map[field_name][course_name]:
             fields_map[field_name][course_name][group_name] = []
 
+        subtopic_ids = []
+        for m in u.modules:
+            for t in m.topics:
+                subtopic_ids.extend([s.id for s in t.subtopics])
+        total_subtopics = len(subtopic_ids)
+
+        enrichment_count = 0
+        if subtopic_ids:
+            enrichment_count = db.query(models.NodeEnrichment).filter(
+                models.NodeEnrichment.node_id.in_(subtopic_ids),
+                models.NodeEnrichment.node_type == "subtopic"
+            ).count()
+
+        q_count = quiz_counts_by_id.get(u.id) or quiz_counts_by_name.get(u.name) or 0
+        prog = progress_records.get(u.id)
+
+        if prog:
+            p_status = prog.status
+            p_percent = prog.progress_percent
+            p_completed = prog.completed_subtopics
+            p_step = prog.current_step
+        elif q_count > 0 or enrichment_count > 0:
+            p_status = "completed"
+            p_percent = 100.0
+            p_completed = total_subtopics
+            p_step = f"Ready: {q_count} Quizzes • {enrichment_count} Diagrams"
+        else:
+            p_status = "idle"
+            p_percent = 0.0
+            p_completed = 0
+            p_step = "AI content build-up pending"
+
         unit_dict = {
             "id": u.id,
             "name": u.name,
             "category": u.category,
             "course": getattr(u, "course", "General") or "General",
             "unit_group": getattr(u, "unit_group", None),
-            "modules": [{"id": m.id, "name": m.name} for m in u.modules]
+            "modules": [{"id": m.id, "name": m.name} for m in u.modules],
+            "total_subtopics": total_subtopics,
+            "quizzes_count": q_count,
+            "diagrams_count": enrichment_count,
+            "pipeline_status": p_status,
+            "pipeline_percent": p_percent,
+            "pipeline_completed": p_completed,
+            "pipeline_step": p_step
         }
         fields_map[field_name][course_name][group_name].append(unit_dict)
 
@@ -161,6 +217,7 @@ def build_curriculum_catalog(db: Session) -> List[Dict[str, Any]]:
             "courses": course_list
         })
     return catalog
+
 
 
 def get_database_browser_data(db: Session) -> List[Dict[str, Any]]:
@@ -352,6 +409,72 @@ async def admin_catalogue(request: Request, db: Session = Depends(get_db)):
             "unread_count": unread_count
         }
     )
+
+
+@router.get("/admin/pipeline/status")
+@router.get("/api/admin/pipeline/status")
+def get_pipeline_status_api(request: Request, db: Session = Depends(get_db)):
+    """Real-time JSON telemetry endpoint for unit catalogue background content generation tracking."""
+    from app.services.content_pipeline import get_all_unit_pipeline_statuses
+
+    statuses = get_all_unit_pipeline_statuses(db)
+    units = db.query(models.Unit).filter(models.Unit.owner_id == None).all()
+    results = {}
+
+    for u in units:
+        prog = statuses.get(u.id, {})
+        subtopic_ids = []
+        for m in u.modules:
+            for t in m.topics:
+                subtopic_ids.extend([s.id for s in t.subtopics])
+        total_subtopics = len(subtopic_ids)
+
+        q_count = db.query(models.GeneratedQuizBank).filter(
+            (models.GeneratedQuizBank.unit_id == u.id) | (models.GeneratedQuizBank.unit_name == u.name)
+        ).count()
+
+        e_count = 0
+        if subtopic_ids:
+            e_count = db.query(models.NodeEnrichment).filter(
+                models.NodeEnrichment.node_id.in_(subtopic_ids),
+                models.NodeEnrichment.node_type == "subtopic"
+            ).count()
+
+        status_val = prog.get("status")
+        if not status_val:
+            status_val = "completed" if (q_count > 0 or e_count > 0) else "idle"
+
+        results[u.id] = {
+            "unit_id": u.id,
+            "unit_name": u.name,
+            "status": status_val,
+            "total_subtopics": total_subtopics,
+            "completed_subtopics": prog.get("completed_subtopics", total_subtopics if status_val == "completed" else 0),
+            "quizzes_generated": q_count,
+            "diagrams_generated": e_count,
+            "progress_percent": prog.get("progress_percent", 100.0 if status_val == "completed" else 0.0),
+            "current_step": prog.get("current_step", f"Ready: {q_count} Quizzes • {e_count} Diagrams" if status_val == "completed" else "Content generation pending")
+        }
+
+    return JSONResponse(content={"status": "success", "units": results})
+
+
+@router.post("/admin/pipeline/trigger/{unit_id}")
+@router.post("/api/admin/pipeline/trigger/{unit_id}")
+def trigger_pipeline_for_unit(unit_id: int, request: Request, db: Session = Depends(get_db)):
+    """Allows admin to queue or re-queue content build-up for an individual unit."""
+    unit = db.query(models.Unit).filter(models.Unit.id == unit_id).first()
+    if not unit:
+        raise HTTPException(status_code=404, detail="Unit not found")
+
+    from app.services.content_pipeline import post_syllabus_event
+    post_syllabus_event([unit.id], syllabus_title=unit.name)
+    return JSONResponse(content={
+        "status": "queued",
+        "unit_id": unit.id,
+        "message": f"Unit '{unit.name}' added to decoupled asynchronous pipeline queue."
+    })
+
 
 
 @router.get("/admin/users", response_class=HTMLResponse)
