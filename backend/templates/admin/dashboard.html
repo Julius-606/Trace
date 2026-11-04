@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edu-AI Trace | Superuser Admin Control Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        if (window.mermaid) mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -352,7 +356,7 @@
 
                                                 <!-- Real-time Status Badge & Step Tracker -->
                                                 <div class="mt-2 flex flex-wrap items-center gap-3">
-                                                    <span id="unit-badge-{{ unit.id }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all
+                                                    <span id="unit-badge-{{ unit.id }}" onclick="openUnitContentModal('{{ unit.id }}', '{{ unit.name|escape }}')" title="Tap to inspect generated quizzes, diagrams & notes" class="cursor-pointer hover:opacity-90 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all
                                                         {% if unit.pipeline_status == 'completed' %}
                                                             bg-emerald-500/15 text-emerald-400 border border-emerald-500/30
                                                         {% elif unit.pipeline_status == 'processing' %}
@@ -398,6 +402,9 @@
                                         </div>
 
                                         <div class="flex items-center gap-2 shrink-0">
+                                            <button type="button" onclick="openUnitContentModal('{{ unit.id }}', '{{ unit.name|escape }}')" class="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-lg border border-emerald-500/30 transition flex items-center gap-1.5 cursor-pointer" title="Inspect actual generated quizzes, diagrams & notes">
+                                                <span>👁️ View Content</span>
+                                            </button>
                                             <button type="button" onclick="triggerUnitPipeline('{{ unit.id }}', this)" class="text-xs font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
                                                 <span>⚡ Build AI Pool</span>
                                             </button>
@@ -457,6 +464,77 @@
                         <button type="submit" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/20 transition">Save Changes</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Unit Generated Content & Quizzes Inspector Modal -->
+        <div id="unit-content-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 sm:p-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col shadow-2xl overflow-hidden relative">
+                <!-- Modal Top Bar -->
+                <div class="p-5 sm:p-6 border-b border-slate-800 flex items-start justify-between gap-4 bg-slate-900/90">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">Generated Content Vault</span>
+                            <span id="modal-unit-meta" class="text-xs text-slate-400 truncate"></span>
+                        </div>
+                        <h2 id="modal-unit-name" class="text-xl sm:text-2xl font-extrabold text-white truncate"></h2>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <a id="modal-manage-unit-link" href="#" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600/50 border border-indigo-500/40 transition">Full Unit Manage &rarr;</a>
+                        <button type="button" onclick="closeUnitContentModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-base cursor-pointer">&times;</button>
+                    </div>
+                </div>
+
+                <!-- Segmented Tab Switcher & Search Bar -->
+                <div class="px-5 sm:px-6 py-3 border-b border-slate-800 bg-slate-950/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="modal-tab-quizzes-btn" onclick="switchModalTab('quizzes')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-md">
+                            <span>📚 Quizzes</span>
+                            <span id="modal-quizzes-badge" class="px-1.5 py-0.2 rounded-full bg-indigo-800 text-[10px]">0</span>
+                        </button>
+                        <button type="button" id="modal-tab-diagrams-btn" onclick="switchModalTab('diagrams')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800">
+                            <span>📊 Diagrams & Notes</span>
+                            <span id="modal-diagrams-badge" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px]">0</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="modal-search" placeholder="Filter questions or concepts..." oninput="filterModalContent()" class="w-full sm:w-64 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1 text-xs text-slate-200 outline-none focus:border-indigo-500">
+                        <button type="button" id="modal-trigger-rebuild" class="text-xs font-bold px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition shrink-0 cursor-pointer">
+                            ⚡ Re-run
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Body Content -->
+                <div class="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4" id="modal-body-scroll">
+                    <!-- Loading Indicator -->
+                    <div id="modal-content-loading" class="py-16 text-center space-y-3">
+                        <div class="inline-block w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-xs text-slate-400">Retrieving generated questions, clinical scenarios & concept diagrams from backend vault...</p>
+                    </div>
+
+                    <!-- Quizzes View -->
+                    <div id="modal-quizzes-container" class="space-y-3 hidden"></div>
+
+                    <!-- Diagrams View -->
+                    <div id="modal-diagrams-container" class="space-y-4 hidden"></div>
+
+                    <!-- Empty State -->
+                    <div id="modal-empty-state" class="hidden py-16 text-center space-y-3">
+                        <div class="text-4xl">🧬</div>
+                        <h4 class="font-bold text-white text-base">No AI Content Generated Yet</h4>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto">This unit has been ingested, but the background AI content pipeline has not finished synthesizing questions and diagrams.</p>
+                        <button type="button" id="modal-empty-trigger-btn" class="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg transition cursor-pointer">
+                            <span>⚡ Build AI Pool Now</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="px-6 py-3 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between text-xs text-slate-500">
+                    <span id="modal-footer-stats">Universal asset: active across Android app, WhatsApp bot, and Web</span>
+                    <button type="button" onclick="closeUnitContentModal()" class="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer">Done Viewing</button>
+                </div>
             </div>
         </div>
 
@@ -1401,10 +1479,263 @@
         }
     }
 
-    // Start polling if on curriculum catalogue page
-    if (document.querySelector('[id^="unit-badge-"]')) {
-        pollPipelineStatus();
-        setInterval(pollPipelineStatus, 3000);
+    // =========================================================================
+    // Dynamic Unit Content & Quizzes Vault Modal
+    // =========================================================================
+    let currentModalUnitId = null;
+    let currentModalData = { quizzes: [], enrichments: [] };
+    let activeModalTab = 'quizzes';
+
+    async function openUnitContentModal(unitId, unitName) {
+        if (!unitId) return;
+        currentModalUnitId = unitId;
+        const modal = document.getElementById('unit-content-modal');
+        if (!modal) return;
+
+        // Reset UI State
+        modal.classList.remove('hidden');
+        document.getElementById('modal-unit-name').textContent = unitName || 'Curriculum Unit';
+        document.getElementById('modal-unit-meta').textContent = `Unit #${unitId}`;
+        document.getElementById('modal-manage-unit-link').href = `/admin/units/${unitId}`;
+        document.getElementById('modal-content-loading').classList.remove('hidden');
+        document.getElementById('modal-quizzes-container').classList.add('hidden');
+        document.getElementById('modal-diagrams-container').classList.add('hidden');
+        document.getElementById('modal-empty-state').classList.add('hidden');
+        document.getElementById('modal-search').value = '';
+
+        const rebuildBtn = document.getElementById('modal-trigger-rebuild');
+        if (rebuildBtn) {
+            rebuildBtn.onclick = () => triggerUnitPipeline(unitId, rebuildBtn);
+        }
+        const emptyTriggerBtn = document.getElementById('modal-empty-trigger-btn');
+        if (emptyTriggerBtn) {
+            emptyTriggerBtn.onclick = () => {
+                triggerUnitPipeline(unitId, emptyTriggerBtn);
+                setTimeout(() => openUnitContentModal(unitId, unitName), 800);
+            };
+        }
+
+        try {
+            const res = await fetch(`/api/admin/units/${unitId}/content`);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            currentModalData = data;
+
+            document.getElementById('modal-content-loading').classList.add('hidden');
+            document.getElementById('modal-unit-meta').textContent = `${data.category || 'General'} • ${data.course || 'Course'} (${data.total_subtopics || 0} subtopics)`;
+            document.getElementById('modal-quizzes-badge').textContent = data.quizzes?.length || 0;
+            document.getElementById('modal-diagrams-badge').textContent = data.enrichments?.length || 0;
+
+            const hasQuizzes = data.quizzes && data.quizzes.length > 0;
+            const hasDiagrams = data.enrichments && data.enrichments.length > 0;
+
+            if (!hasQuizzes && !hasDiagrams) {
+                document.getElementById('modal-empty-state').classList.remove('hidden');
+                return;
+            }
+
+            renderModalQuizzes(data.quizzes || []);
+            renderModalDiagrams(data.enrichments || []);
+            switchModalTab(hasQuizzes ? 'quizzes' : 'diagrams');
+        } catch (err) {
+            document.getElementById('modal-content-loading').innerHTML = `
+                <div class="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                    <p class="font-bold text-sm">Failed to retrieve unit content vault</p>
+                    <p class="mt-1">${err.message || err}</p>
+                </div>
+            `;
+        }
+    }
+
+    function closeUnitContentModal() {
+        const modal = document.getElementById('unit-content-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    function switchModalTab(tab) {
+        activeModalTab = tab;
+        const quizzesBtn = document.getElementById('modal-tab-quizzes-btn');
+        const diagramsBtn = document.getElementById('modal-tab-diagrams-btn');
+        const quizzesContainer = document.getElementById('modal-quizzes-container');
+        const diagramsContainer = document.getElementById('modal-diagrams-container');
+
+        if (tab === 'quizzes') {
+            quizzesBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-md';
+            diagramsBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800';
+            quizzesContainer.classList.remove('hidden');
+            diagramsContainer.classList.add('hidden');
+        } else {
+            diagramsBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-md';
+            quizzesBtn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800';
+            diagramsContainer.classList.remove('hidden');
+            quizzesContainer.classList.add('hidden');
+
+            if (window.mermaid) {
+                setTimeout(() => {
+                    try {
+                        mermaid.run();
+                    } catch (e) {}
+                }, 50);
+            }
+        }
+    }
+
+    function renderModalQuizzes(quizzes) {
+        const container = document.getElementById('modal-quizzes-container');
+        if (!container) return;
+        if (!quizzes || quizzes.length === 0) {
+            container.innerHTML = `<p class="p-8 text-center text-xs text-slate-500">No quizzes generated yet for this unit.</p>`;
+            return;
+        }
+
+        container.innerHTML = quizzes.map((q, idx) => {
+            const optionsHtml = (q.options || []).map((opt, optIdx) => {
+                const isCorrect = (opt === q.correct_answer || (opt && q.correct_answer && opt.trim() === q.correct_answer.trim()));
+                const letter = ['A', 'B', 'C', 'D', 'E'][optIdx] || optIdx + 1;
+                return `
+                    <div class="p-2.5 rounded-xl text-xs flex items-start gap-2 border ${isCorrect ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200 font-medium' : 'bg-slate-950/70 border-slate-800 text-slate-300'}">
+                        <span class="w-4 h-4 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] ${isCorrect ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'}">
+                            ${isCorrect ? '&check;' : letter}
+                        </span>
+                        <span class="flex-1">${escapeHtml(opt)}</span>
+                        ${isCorrect ? '<span class="text-[9px] font-bold uppercase tracking-wider text-emerald-400 shrink-0">Correct Answer</span>' : ''}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="modal-quiz-card rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3" data-search="${escapeHtml((q.question + ' ' + (q.subtopic_name || '') + ' ' + (q.topic_name || '')).toLowerCase())}">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
+                                ${escapeHtml(q.subtopic_name || 'Subtopic')}
+                            </span>
+                            ${q.topic_name ? `<span class="text-[10px] text-slate-500">in ${escapeHtml(q.topic_name)}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${q.difficulty === 'Hard' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'}">
+                                ${escapeHtml(q.difficulty || 'Medium')}
+                            </span>
+                            <span class="text-[10px] font-mono text-slate-500">#${q.id}</span>
+                        </div>
+                    </div>
+
+                    ${q.clinical_scenario ? `
+                        <div class="p-2.5 rounded-lg bg-slate-900 border-l-2 border-indigo-500 text-xs text-slate-300 italic">
+                            <strong class="font-bold text-indigo-400 not-italic block mb-0.5 text-[10px] uppercase">Clinical Scenario:</strong>
+                            ${escapeHtml(q.clinical_scenario)}
+                        </div>
+                    ` : ''}
+
+                    <p class="text-xs sm:text-sm font-semibold text-slate-100 leading-relaxed">${escapeHtml(q.question)}</p>
+
+                    <div class="grid sm:grid-cols-2 gap-2 pt-1">
+                        ${optionsHtml}
+                    </div>
+
+                    ${q.explanation ? `
+                        <details class="text-xs text-slate-400 pt-2 border-t border-slate-800/60 cursor-pointer">
+                            <summary class="font-semibold text-indigo-400 hover:text-indigo-300">View Rationale & Clinical Explanation &rarr;</summary>
+                            <div class="mt-2 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-slate-300 leading-relaxed font-sans text-xs">
+                                ${escapeHtml(q.explanation)}
+                            </div>
+                        </details>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderModalDiagrams(enrichments) {
+        const container = document.getElementById('modal-diagrams-container');
+        if (!container) return;
+        if (!enrichments || enrichments.length === 0) {
+            container.innerHTML = `<p class="p-8 text-center text-xs text-slate-500">No visual diagrams or enrichments generated yet for this unit.</p>`;
+            return;
+        }
+
+        container.innerHTML = enrichments.map((e, idx) => {
+            return `
+                <div class="modal-diagram-card rounded-2xl border border-slate-800 bg-slate-950/60 p-5 space-y-4" data-search="${escapeHtml((e.node_name + ' ' + (e.clinical_takeaway || '') + ' ' + (e.intuitive_explanation || '')).toLowerCase())}">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                        <div>
+                            <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold">
+                                ${escapeHtml(e.node_type)} Node #${e.node_id}
+                            </span>
+                            <h3 class="text-base font-bold text-white mt-1">${escapeHtml(e.node_name)}</h3>
+                        </div>
+                        ${e.diagram_caption ? `<span class="text-xs text-slate-400 italic">${escapeHtml(e.diagram_caption)}</span>` : ''}
+                    </div>
+
+                    ${e.clinical_takeaway ? `
+                        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
+                            <span class="text-base leading-none">💡</span>
+                            <div>
+                                <strong class="font-bold block text-amber-300 uppercase tracking-wider text-[10px] mb-0.5">High-Yield Concept Takeaway</strong>
+                                <span>${escapeHtml(e.clinical_takeaway)}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${e.diagram_code ? `
+                        <div class="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-2">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <span class="text-[11px] font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>📊</span> Mermaid Concept Map
+                                </span>
+                                <button type="button" onclick="const code = this.parentElement.nextElementSibling.nextElementSibling; code.classList.toggle('hidden');" class="text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
+                                    Toggle Syntax
+                                </button>
+                            </div>
+                            <div class="mermaid py-3 overflow-x-auto flex justify-center text-slate-100">
+${e.diagram_code}
+                            </div>
+                            <pre class="hidden p-3 bg-slate-950 rounded-lg text-xs font-mono text-slate-300 overflow-x-auto border border-slate-800">${escapeHtml(e.diagram_code)}</pre>
+                        </div>
+                    ` : ''}
+
+                    <div class="grid md:grid-cols-2 gap-3 pt-1">
+                        ${e.intuitive_explanation ? `
+                            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+                                <h4 class="text-[11px] font-bold uppercase tracking-wider text-indigo-400">Intuitive Concept Analogy</h4>
+                                <p class="text-xs text-slate-300 leading-relaxed">${escapeHtml(e.intuitive_explanation)}</p>
+                            </div>
+                        ` : ''}
+                        ${e.technical_explanation ? `
+                            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+                                <h4 class="text-[11px] font-bold uppercase tracking-wider text-indigo-400">Technical Breakdown</h4>
+                                <p class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${escapeHtml(e.technical_explanation)}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function filterModalContent() {
+        const query = (document.getElementById('modal-search')?.value || '').toLowerCase().trim();
+        const quizCards = document.querySelectorAll('.modal-quiz-card');
+        quizCards.forEach(card => {
+            const text = card.getAttribute('data-search') || '';
+            card.classList.toggle('hidden', query !== '' && !text.includes(query));
+        });
+
+        const diagCards = document.querySelectorAll('.modal-diagram-card');
+        diagCards.forEach(card => {
+            const text = card.getAttribute('data-search') || '';
+            card.classList.toggle('hidden', query !== '' && !text.includes(query));
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 </script>
 </body>

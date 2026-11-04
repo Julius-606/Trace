@@ -740,10 +740,107 @@ async def admin_unit_detail(unit_id: int, request: Request, db: Session = Depend
     if not unit:
         raise HTTPException(status_code=404, detail="Unit not found")
 
+    subtopic_ids = [sub.id for mod in unit.modules for top in mod.topics for sub in top.subtopics]
+
+    quizzes = db.query(models.GeneratedQuizBank).filter(
+        (models.GeneratedQuizBank.unit_id == unit.id) |
+        (models.GeneratedQuizBank.subtopic_id.in_(subtopic_ids) if subtopic_ids else False)
+    ).order_by(models.GeneratedQuizBank.id.desc()).all()
+
+    enrichments = db.query(models.NodeEnrichment).filter(
+        (models.NodeEnrichment.node_id.in_(subtopic_ids) if subtopic_ids else False) |
+        ((models.NodeEnrichment.node_id == unit.id) & (models.NodeEnrichment.node_type == "unit"))
+    ).order_by(models.NodeEnrichment.id.asc()).all()
+
+    progress = db.query(models.UnitPipelineProgress).filter(
+        models.UnitPipelineProgress.unit_id == unit.id
+    ).first()
+
     return templates.TemplateResponse(
         "curriculum/unit_detail.html",
-        {"request": request, "version": BACKEND_VERSION, "unit": unit}
+        {
+            "request": request,
+            "version": BACKEND_VERSION,
+            "unit": unit,
+            "quizzes": quizzes,
+            "enrichments": enrichments,
+            "progress": progress,
+            "total_subtopics": len(subtopic_ids)
+        }
     )
+
+
+@router.get("/api/admin/units/{unit_id}/content")
+@router.get("/api/admin/units/{unit_id}/generated-content")
+async def get_unit_generated_content(unit_id: int, db: Session = Depends(get_db)):
+    unit = db.query(models.Unit).filter(models.Unit.id == unit_id).first()
+    if not unit:
+        raise HTTPException(status_code=404, detail="Unit not found")
+
+    subtopic_ids = [sub.id for mod in unit.modules for top in mod.topics for sub in top.subtopics]
+
+    quizzes = db.query(models.GeneratedQuizBank).filter(
+        (models.GeneratedQuizBank.unit_id == unit.id) |
+        (models.GeneratedQuizBank.subtopic_id.in_(subtopic_ids) if subtopic_ids else False)
+    ).order_by(models.GeneratedQuizBank.id.desc()).all()
+
+    enrichments = db.query(models.NodeEnrichment).filter(
+        (models.NodeEnrichment.node_id.in_(subtopic_ids) if subtopic_ids else False) |
+        ((models.NodeEnrichment.node_id == unit.id) & (models.NodeEnrichment.node_type == "unit"))
+    ).order_by(models.NodeEnrichment.id.asc()).all()
+
+    progress = db.query(models.UnitPipelineProgress).filter(
+        models.UnitPipelineProgress.unit_id == unit.id
+    ).first()
+
+    return JSONResponse(content={
+        "status": "success",
+        "unit_id": unit.id,
+        "unit_name": unit.name,
+        "category": unit.category or "General",
+        "course": unit.course or "General",
+        "total_modules": len(unit.modules),
+        "total_subtopics": len(subtopic_ids),
+        "pipeline": {
+            "status": progress.status if progress else ("completed" if (quizzes or enrichments) else "idle"),
+            "progress_percent": progress.progress_percent if progress else (100 if (quizzes or enrichments) else 0),
+            "current_step": progress.current_step if progress else ("Ready" if (quizzes or enrichments) else "Pending build"),
+            "quizzes_generated": progress.quizzes_generated if progress else len(quizzes),
+            "diagrams_generated": progress.diagrams_generated if progress else len(enrichments)
+        },
+        "quizzes": [
+            {
+                "id": q.id,
+                "subtopic_id": q.subtopic_id,
+                "subtopic_name": q.subtopic_name or "General Topic",
+                "topic_name": q.topic_name or "",
+                "question": q.question,
+                "options": q.options if isinstance(q.options, list) else [],
+                "correct_answer": q.correct_answer,
+                "explanation": q.explanation or "",
+                "difficulty": q.difficulty or "Medium",
+                "clinical_scenario": q.clinical_scenario or "",
+                "created_at": q.created_at
+            }
+            for q in quizzes
+        ],
+        "enrichments": [
+            {
+                "id": e.id,
+                "node_id": e.node_id,
+                "node_type": e.node_type,
+                "node_name": e.node_name,
+                "intuitive_explanation": e.intuitive_explanation or "",
+                "technical_explanation": e.technical_explanation or "",
+                "clinical_takeaway": e.clinical_takeaway or "",
+                "diagram_type": e.diagram_type or "mermaid",
+                "diagram_code": e.diagram_code or "",
+                "diagram_caption": e.diagram_caption or "",
+                "metadata_json": e.metadata_json or {}
+            }
+            for e in enrichments
+        ]
+    })
 
 
 @router.post("/admin/units/bulk-update")

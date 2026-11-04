@@ -1,57 +1,492 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ unit.name }} | Trace Admin</title><script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ unit.name }} | Curriculum & AI Pool Inspector | Trace Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose' });
+    </script>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
-<main class="max-w-5xl mx-auto">
-    <a href="/admin/catalogue" class="text-sm text-indigo-400 hover:underline">← Back to catalogue</a>
-    <div class="flex justify-between items-start mt-6 mb-8"><div><p class="text-xs uppercase tracking-widest text-indigo-400">Unit structure</p><h1 class="text-3xl font-bold mt-2">{{ unit.name }}</h1></div><span class="text-slate-500">v{{ version }}</span></div>
-    <form method="post" class="rounded-2xl border border-slate-800 bg-slate-900 p-6 grid md:grid-cols-2 gap-4 mb-8">
-        <input name="name" value="{{ unit.name }}" required placeholder="Unit variant name" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-        <input name="field" value="{{ unit.category or 'General' }}" required placeholder="Field" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-        <input name="course" value="{{ unit.course or 'General' }}" required placeholder="Course" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-        <input name="unit_group" value="{{ unit.unit_group or unit.name }}" required placeholder="Unit group" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-        <button class="md:col-span-2 rounded-lg bg-indigo-600 py-2 font-bold">Save unit metadata</button>
-    </form>
-    <details class="mb-8 rounded-xl border border-red-500/20 bg-red-500/5 p-4">
-        <summary class="cursor-pointer text-sm font-semibold text-red-300">Danger zone</summary>
-        <form method="post" action="/delete-unit/{{ unit.id }}" class="mt-3 flex flex-wrap items-center gap-2" onsubmit="return confirm('Apply this deletion scope to the unit?')">
-            <label class="text-sm text-slate-400" for="delete-scope">Deletion scope</label>
-            <select id="delete-scope" name="delete_scope" class="rounded border border-slate-700 bg-slate-950 px-2 py-2 text-sm">
-                <option value="catalogue">Only from Catalogue</option>
-                <option value="users">Delete for Users too</option>
-            </select>
-            <button class="rounded-lg border border-red-500/40 px-3 py-2 text-sm text-red-300">Delete unit</button>
-        </form>
-    </details>
-    <form method="post" action="/admin/nodes" class="mb-8 rounded-xl border border-slate-800 bg-slate-900 p-4 flex gap-2">
-        <input type="hidden" name="node_type" value="module"><input type="hidden" name="parent_id" value="{{ unit.id }}">
-        <input name="name" required placeholder="New module name" class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-        <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold">Add module</button>
-    </form>
-    <div class="space-y-4">
-    {% for module in unit.modules %}
-    <details class="rounded-xl border border-slate-800 bg-slate-900 p-5"><summary class="cursor-pointer font-bold">Module: {{ module.name }}</summary>
-        <form method="post" action="/admin/nodes/module/{{ module.id }}" class="mt-3 flex gap-2"><input name="name" value="{{ module.name }}" required class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"><button class="rounded-lg bg-slate-700 px-3 py-2 text-xs">Edit module</button></form>
-        <form method="post" action="/admin/nodes" class="mt-2 flex gap-2"><input type="hidden" name="node_type" value="topic"><input type="hidden" name="parent_id" value="{{ module.id }}"><input name="name" required placeholder="New topic" class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"><button class="rounded-lg bg-indigo-600 px-3 py-2 text-xs">Add topic</button></form>
-        <details class="mt-2"><summary class="cursor-pointer text-xs text-slate-500">Danger zone</summary><form method="post" action="/admin/nodes/module/{{ module.id }}/delete" class="mt-2" onsubmit="return confirm('Delete this module and its descendants?')"><button class="text-xs text-red-400 hover:text-red-300">Delete module</button></form></details>
-        <div class="mt-4 ml-4 space-y-3">{% for topic in module.topics %}<details class="border-l-2 border-indigo-500/30 pl-4"><summary class="cursor-pointer font-semibold">Topic: {{ topic.name }}</summary>
-            <form method="post" action="/admin/nodes/topic/{{ topic.id }}" class="mt-2 flex gap-2"><input name="name" value="{{ topic.name }}" required class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"><button class="rounded-lg bg-slate-700 px-3 py-2 text-xs">Edit topic</button></form>
-            <form method="post" action="/admin/nodes" class="mt-2 flex gap-2"><input type="hidden" name="node_type" value="subtopic"><input type="hidden" name="parent_id" value="{{ topic.id }}"><input name="name" required placeholder="New subtopic" class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"><button class="rounded-lg bg-indigo-600 px-3 py-2 text-xs">Add subtopic</button></form>
-            <details class="mt-2"><summary class="cursor-pointer text-xs text-slate-500">Danger zone</summary><form method="post" action="/admin/nodes/topic/{{ topic.id }}/delete" class="mt-2" onsubmit="return confirm('Delete this topic and its descendants?')"><button class="text-xs text-red-400 hover:text-red-300">Delete topic</button></form></details>
-            <div class="mt-3 ml-4 space-y-2">{% for subtopic in topic.subtopics %}<details class="border-l-2 border-slate-700 pl-4"><summary class="cursor-pointer text-sm">Subtopic: {{ subtopic.name }}</summary>
-                <form method="post" action="/admin/nodes/subtopic/{{ subtopic.id }}" class="mt-2 flex gap-2"><input name="name" value="{{ subtopic.name }}" required class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"><button class="rounded-lg bg-slate-700 px-3 py-2 text-xs">Edit subtopic</button></form>
-                <form method="post" action="/admin/nodes" class="mt-2 flex gap-2"><input type="hidden" name="node_type" value="objective"><input type="hidden" name="parent_id" value="{{ subtopic.id }}"><input name="name" required placeholder="New learning objective" class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"><button class="rounded-lg bg-indigo-600 px-3 py-2 text-xs">Add objective</button></form>
-                <details class="mt-2"><summary class="cursor-pointer text-xs text-slate-500">Danger zone</summary><form method="post" action="/admin/nodes/subtopic/{{ subtopic.id }}/delete" class="mt-2" onsubmit="return confirm('Delete this subtopic and its objectives?')"><button class="text-xs text-red-400 hover:text-red-300">Delete subtopic</button></form></details>
-                <ul class="mt-2 ml-5 list-disc text-sm text-slate-400">{% for objective in subtopic.learning_objectives %}<li class="mb-2"><form method="post" action="/admin/nodes/objective/{{ objective.id }}" class="flex gap-2"><input name="name" value="{{ objective.description }}" required class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"><button class="rounded-lg bg-slate-700 px-3 py-2 text-xs">Edit</button></form></li>{% endfor %}</ul>
-                {% for objective in subtopic.learning_objectives %}<details class="ml-5 mt-1"><summary class="cursor-pointer text-xs text-slate-500">Danger zone</summary><form method="post" action="/admin/nodes/objective/{{ objective.id }}/delete" class="mt-1" onsubmit="return confirm('Delete this objective?')"><button class="text-xs text-red-400 hover:text-red-300">Delete objective</button></form></details>{% endfor %}
-            </details>{% endfor %}</div>
-        </details>{% endfor %}</div>
-    </details>
-    {% else %}<p class="text-slate-500">This unit has no modules yet.</p>{% endfor %}
+<body class="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 selection:bg-indigo-500/30">
+<main class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Top Navigation & Breadcrumbs -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div class="flex items-center gap-3">
+            <a href="/admin/catalogue" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition flex items-center gap-1.5">
+                <span>&larr;</span> Back to Catalogue
+            </a>
+            <span class="text-slate-600">/</span>
+            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">{{ unit.category or 'General' }}</span>
+            <span class="text-slate-600">/</span>
+            <span class="text-xs text-slate-400 truncate max-w-xs">{{ unit.course or 'Course' }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="triggerRebuild({{ unit.id }}, this)" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition flex items-center gap-1.5 cursor-pointer">
+                <span>⚡ Re-run Pipeline</span>
+            </button>
+            <span class="text-xs font-mono text-slate-500">v{{ version }}</span>
+        </div>
     </div>
+
+    <!-- Unit Header & Status Summary Card -->
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-16 -top-16 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-widest text-indigo-400">Curriculum Unit Inspection</p>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-white mt-1">{{ unit.name }}</h1>
+                <p class="text-xs text-slate-400 mt-1">
+                    {{ unit.modules|length }} Modules &bull; {{ total_subtopics }} Subtopics &bull; Group: <code class="text-indigo-300">{{ unit.unit_group or unit.name }}</code>
+                </p>
+            </div>
+
+            <!-- Content Pool Metrics Pills -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="px-3.5 py-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full {% if quizzes|length > 0 %}bg-emerald-400{% else %}bg-amber-400{% endif %}"></span>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold text-slate-400">Quiz Pool</div>
+                        <div class="text-sm font-extrabold text-slate-100">{{ quizzes|length }} Questions</div>
+                    </div>
+                </div>
+
+                <div class="px-3.5 py-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full {% if enrichments|length > 0 %}bg-sky-400{% else %}bg-slate-500{% endif %}"></span>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold text-slate-400">Visual Diagrams</div>
+                        <div class="text-sm font-extrabold text-slate-100">{{ enrichments|length }} Generated</div>
+                    </div>
+                </div>
+
+                {% if progress %}
+                <div class="px-3.5 py-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full {% if progress.status == 'completed' %}bg-emerald-400{% elif progress.status == 'processing' %}bg-sky-400 animate-ping{% else %}bg-amber-400{% endif %}"></span>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold text-slate-400">Pipeline</div>
+                        <div class="text-sm font-extrabold text-slate-100 capitalize">{{ progress.status }} ({{ progress.progress_percent }}%)</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if progress and progress.status == 'processing' %}
+        <div class="mt-4 pt-4 border-t border-slate-800/80">
+            <div class="flex items-center justify-between text-xs text-sky-300 font-mono mb-1.5">
+                <span>{{ progress.current_step }}</span>
+                <span>{{ progress.completed_subtopics }}/{{ progress.total_subtopics }} subtopics ({{ progress.progress_percent }}%)</span>
+            </div>
+            <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                <div class="bg-gradient-to-r from-sky-500 to-indigo-500 h-2 rounded-full transition-all duration-500" style="width: {{ progress.progress_percent }}%;"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
+        <button onclick="switchTab('quizzes')" id="tab-btn-quizzes" class="tab-button px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-indigo-600 text-white shadow-md">
+            <span>📚 Generated Quizzes</span>
+            <span class="px-2 py-0.5 rounded-full bg-indigo-800/80 text-[10px]">{{ quizzes|length }}</span>
+        </button>
+        <button onclick="switchTab('diagrams')" id="tab-btn-diagrams" class="tab-button px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800">
+            <span>📊 Diagrams & Enrichments</span>
+            <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[10px]">{{ enrichments|length }}</span>
+        </button>
+        <button onclick="switchTab('nodes')" id="tab-btn-nodes" class="tab-button px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800">
+            <span>🌳 Curriculum Tree</span>
+            <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[10px]">{{ unit.modules|length }} modules</span>
+        </button>
+        <button onclick="switchTab('settings')" id="tab-btn-settings" class="tab-button px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800">
+            <span>⚙️ Metadata & Settings</span>
+        </button>
+    </div>
+
+    <!-- TAB 1: GENERATED QUIZZES -->
+    <section id="tab-content-quizzes" class="tab-content space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+            <div class="flex items-center gap-2">
+                <input id="quiz-search" type="text" placeholder="Filter questions by keyword or topic..." oninput="filterQuizzes()" class="w-72 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500">
+                <select id="quiz-diff-filter" onchange="filterQuizzes()" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 outline-none">
+                    <option value="all">All Difficulties</option>
+                    <option value="Clinical Recall">Clinical Recall</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                    <option value="High-Yield Board">High-Yield Board</option>
+                </select>
+            </div>
+            <span class="text-xs text-slate-400"><strong id="quiz-count-display">{{ quizzes|length }}</strong> questions available across apps</span>
+        </div>
+
+        {% if quizzes %}
+        <div class="grid gap-4" id="quizzes-container">
+            {% for q in quizzes %}
+            <article class="quiz-item rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg space-y-3" data-topic="{{ q.subtopic_name|lower }} {{ q.topic_name|lower }} {{ q.question|lower }}" data-diff="{{ q.difficulty }}">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
+                            {{ q.subtopic_name or 'Subtopic' }}
+                        </span>
+                        {% if q.topic_name %}
+                        <span class="text-[10px] text-slate-500">in {{ q.topic_name }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full
+                            {% if q.difficulty == 'Hard' %}bg-rose-500/20 text-rose-300 border border-rose-500/30
+                            {% elif q.difficulty == 'Clinical Recall' %}bg-amber-500/20 text-amber-300 border border-amber-500/30
+                            {% else %}bg-indigo-500/20 text-indigo-300 border border-indigo-500/30{% endif %}">
+                            {{ q.difficulty or 'Standard' }}
+                        </span>
+                        <span class="text-[10px] font-mono text-slate-500">#{{ q.id }}</span>
+                    </div>
+                </div>
+
+                {% if q.clinical_scenario %}
+                <div class="p-3 rounded-xl bg-slate-950/70 border-l-2 border-indigo-500 text-xs text-slate-300 italic">
+                    <span class="font-bold text-indigo-400 not-italic block mb-0.5">Clinical Case / Scenario:</span>
+                    {{ q.clinical_scenario }}
+                </div>
+                {% endif %}
+
+                <p class="text-sm font-semibold text-slate-100 leading-relaxed">{{ q.question }}</p>
+
+                <!-- Options Grid -->
+                <div class="grid sm:grid-cols-2 gap-2 pt-1">
+                    {% for opt in q.options %}
+                    {% set is_correct = (opt == q.correct_answer or opt.strip() == q.correct_answer.strip()) %}
+                    <div class="p-3 rounded-xl text-xs flex items-start gap-2 border transition
+                        {% if is_correct %}
+                            bg-emerald-500/10 border-emerald-500/40 text-emerald-200 font-medium
+                        {% else %}
+                            bg-slate-950/70 border-slate-800 text-slate-300
+                        {% endif %}">
+                        <span class="w-4 h-4 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px]
+                            {% if is_correct %}bg-emerald-500 text-slate-950{% else %}bg-slate-800 text-slate-400{% endif %}">
+                            {% if is_correct %}&check;{% else %}{{ loop.index0 | replace(0, 'A') | replace(1, 'B') | replace(2, 'C') | replace(3, 'D') }}{% endif %}
+                        </span>
+                        <span class="flex-1">{{ opt }}</span>
+                        {% if is_correct %}
+                        <span class="text-[9px] font-bold uppercase tracking-wider text-emerald-400 shrink-0">Correct</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if q.explanation %}
+                <details class="text-xs text-slate-400 pt-2 border-t border-slate-800/60 cursor-pointer">
+                    <summary class="font-semibold text-indigo-400 hover:text-indigo-300">View Rationale & Explanation &rarr;</summary>
+                    <div class="mt-2 p-3 bg-slate-950 rounded-xl border border-slate-800 text-slate-300 leading-relaxed font-sans">
+                        {{ q.explanation }}
+                    </div>
+                </details>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-12 text-center space-y-3">
+            <div class="text-3xl">🧩</div>
+            <h3 class="font-bold text-white text-base">No Quizzes Generated Yet</h3>
+            <p class="text-xs text-slate-400 max-w-md mx-auto">
+                Trigger the background pipeline to automatically generate clinical MCQs, case scenarios, and high-yield retrieval items for every subtopic in this unit.
+            </p>
+            <button onclick="triggerRebuild({{ unit.id }}, this)" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg transition">
+                <span>⚡ Build Quiz Pool Now</span>
+            </button>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- TAB 2: VISUAL DIAGRAMS & ENRICHMENTS -->
+    <section id="tab-content-diagrams" class="tab-content hidden space-y-6">
+        {% if enrichments %}
+        <div class="grid gap-6">
+            {% for e in enrichments %}
+            <article class="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+                    <div>
+                        <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold">
+                            {{ e.node_type }} Node #{{ e.node_id }}
+                        </span>
+                        <h2 class="text-lg font-bold text-white mt-1">{{ e.node_name }}</h2>
+                    </div>
+                    {% if e.diagram_caption %}
+                    <span class="text-xs text-slate-400 italic">{{ e.diagram_caption }}</span>
+                    {% endif %}
+                </div>
+
+                <!-- High-Yield Clinical Takeaway -->
+                {% if e.clinical_takeaway %}
+                <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
+                    <span class="text-base leading-none">💡</span>
+                    <div>
+                        <strong class="font-bold block text-amber-300 uppercase tracking-wider text-[10px] mb-0.5">High-Yield Concept Takeaway</strong>
+                        <span>{{ e.clinical_takeaway }}</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Visual Mermaid Diagram Box -->
+                {% if e.diagram_code %}
+                <div class="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span class="text-[11px] font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>📊</span> Visual System Architecture Map
+                        </span>
+                        <button type="button" onclick="toggleRawCode('diag-raw-{{ e.id }}', this)" class="text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                            Toggle Raw Syntax
+                        </button>
+                    </div>
+
+                    <!-- Rendered Mermaid Visual -->
+                    <div class="mermaid py-3 overflow-x-auto flex justify-center text-slate-100">
+{{ e.diagram_code }}
+                    </div>
+
+                    <!-- Hidden Raw Code Container -->
+                    <pre id="diag-raw-{{ e.id }}" class="hidden p-3 bg-slate-900 rounded-lg text-xs font-mono text-slate-300 overflow-x-auto border border-slate-800">{{ e.diagram_code }}</pre>
+                </div>
+                {% endif %}
+
+                <!-- Explanations Grid: Intuitive Analogy & Technical Breakdown -->
+                <div class="grid md:grid-cols-2 gap-4 pt-2">
+                    {% if e.intuitive_explanation %}
+                    <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400">Intuitive Concept Analogy</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed">{{ e.intuitive_explanation }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if e.technical_explanation %}
+                    <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400">Technical / Clinical Synthesis</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">{{ e.technical_explanation }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-12 text-center space-y-3">
+            <div class="text-3xl">📊</div>
+            <h3 class="font-bold text-white text-base">No Diagrams or Enrichments Yet</h3>
+            <p class="text-xs text-slate-400 max-w-md mx-auto">
+                Run the content pipeline to synthesize Mermaid flowchart concept maps and clinical takeaways for this unit.
+            </p>
+            <button onclick="triggerRebuild({{ unit.id }}, this)" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-xs font-bold text-white shadow-lg transition">
+                <span>⚡ Synthesize Diagrams Now</span>
+            </button>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- TAB 3: CURRICULUM TREE & NODES -->
+    <section id="tab-content-nodes" class="tab-content hidden space-y-6">
+        <form method="post" action="/admin/nodes" class="rounded-xl border border-slate-800 bg-slate-900 p-4 flex gap-2">
+            <input type="hidden" name="node_type" value="module">
+            <input type="hidden" name="parent_id" value="{{ unit.id }}">
+            <input name="name" required placeholder="Add new module name..." class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500">
+            <button class="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-bold text-white transition">+ Add Module</button>
+        </form>
+
+        <div class="space-y-4">
+            {% for module in unit.modules %}
+            <details class="rounded-xl border border-slate-800 bg-slate-900/90 p-5 shadow-md" open>
+                <summary class="cursor-pointer font-bold text-white text-sm flex items-center justify-between">
+                    <span>Module {{ loop.index }}: {{ module.name }}</span>
+                    <span class="text-xs font-normal text-slate-400">{{ module.topics|length }} topics</span>
+                </summary>
+
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <form method="post" action="/admin/nodes/module/{{ module.id }}" class="flex-1 min-w-[240px] flex gap-2">
+                        <input name="name" value="{{ module.name }}" required class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100">
+                        <button class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-semibold">Rename</button>
+                    </form>
+                    <form method="post" action="/admin/nodes" class="flex-1 min-w-[240px] flex gap-2">
+                        <input type="hidden" name="node_type" value="topic">
+                        <input type="hidden" name="parent_id" value="{{ module.id }}">
+                        <input name="name" required placeholder="Add new topic..." class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100">
+                        <button class="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-bold">+ Topic</button>
+                    </form>
+                </div>
+
+                <div class="mt-4 ml-4 space-y-3">
+                    {% for topic in module.topics %}
+                    <details class="border-l-2 border-indigo-500/30 pl-4 space-y-2" open>
+                        <summary class="cursor-pointer font-semibold text-xs text-slate-200">
+                            Topic: {{ topic.name }} <span class="text-slate-500 font-normal">({{ topic.subtopics|length }} subtopics)</span>
+                        </summary>
+
+                        <div class="flex flex-wrap gap-2 pt-1">
+                            <form method="post" action="/admin/nodes/topic/{{ topic.id }}" class="flex-1 min-w-[200px] flex gap-2">
+                                <input name="name" value="{{ topic.name }}" required class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-100">
+                                <button class="rounded bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-semibold">Save</button>
+                            </form>
+                            <form method="post" action="/admin/nodes" class="flex-1 min-w-[200px] flex gap-2">
+                                <input type="hidden" name="node_type" value="subtopic">
+                                <input type="hidden" name="parent_id" value="{{ topic.id }}">
+                                <input name="name" required placeholder="Add subtopic..." class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-100">
+                                <button class="rounded bg-indigo-600 hover:bg-indigo-500 px-2.5 py-1 text-xs font-bold">+ Subtopic</button>
+                            </form>
+                        </div>
+
+                        <div class="mt-2 ml-4 space-y-2">
+                            {% for subtopic in topic.subtopics %}
+                            <details class="border-l-2 border-slate-800 pl-3 space-y-2">
+                                <summary class="cursor-pointer text-xs text-slate-300 font-medium">
+                                    Subtopic: {{ subtopic.name }}
+                                </summary>
+                                <form method="post" action="/admin/nodes/subtopic/{{ subtopic.id }}" class="mt-1 flex gap-2">
+                                    <input name="name" value="{{ subtopic.name }}" required class="flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs">
+                                    <button class="rounded bg-slate-800 px-2 py-1 text-xs">Rename</button>
+                                </form>
+                                <form method="post" action="/admin/nodes" class="mt-1 flex gap-2">
+                                    <input type="hidden" name="node_type" value="objective">
+                                    <input type="hidden" name="parent_id" value="{{ subtopic.id }}">
+                                    <input name="name" required placeholder="Add learning objective..." class="flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs">
+                                    <button class="rounded bg-indigo-600 px-2 py-1 text-xs font-bold">+ Objective</button>
+                                </form>
+
+                                <ul class="mt-1.5 ml-4 list-disc text-xs text-slate-400 space-y-1">
+                                    {% for objective in subtopic.learning_objectives %}
+                                    <li class="flex items-center justify-between gap-2">
+                                        <span>{{ objective.description }}</span>
+                                        <form method="post" action="/admin/nodes/objective/{{ objective.id }}/delete" onsubmit="return confirm('Delete this objective?')">
+                                            <button class="text-[10px] text-rose-400 hover:underline">Delete</button>
+                                        </form>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </details>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endfor %}
+                </div>
+            </details>
+            {% else %}
+            <p class="text-xs text-slate-500">This unit has no modules yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- TAB 4: METADATA & SETTINGS -->
+    <section id="tab-content-settings" class="tab-content hidden space-y-6">
+        <form method="post" class="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 grid md:grid-cols-2 gap-4 shadow-lg">
+            <div class="md:col-span-2">
+                <h3 class="font-bold text-white text-base">Edit Unit Metadata</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Update unit classification, course naming, or grouping attributes.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Unit Display Name</label>
+                <input name="name" value="{{ unit.name }}" required class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Academic Field / Category</label>
+                <input name="field" value="{{ unit.category or 'General' }}" required class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Parent Course</label>
+                <input name="course" value="{{ unit.course or 'General' }}" required class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Unit Group / Cluster</label>
+                <input name="unit_group" value="{{ unit.unit_group or unit.name }}" required class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500">
+            </div>
+            <button class="md:col-span-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 py-2.5 text-xs font-bold text-white transition shadow-lg">Save Unit Metadata Changes</button>
+        </form>
+
+        <details class="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-6 space-y-4">
+            <summary class="cursor-pointer text-sm font-bold text-rose-300">Danger Zone: Permanent Unit Deletion</summary>
+            <form method="post" action="/delete-unit/{{ unit.id }}" class="mt-3 flex flex-wrap items-center gap-3" onsubmit="return confirm('Are you certain? This removes the unit and all associated generated quizzes and diagrams.')">
+                <label class="text-xs text-slate-300" for="delete-scope">Deletion scope:</label>
+                <select id="delete-scope" name="delete_scope" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-200">
+                    <option value="catalogue">Only from Catalogue (Retain Student Cached Progress)</option>
+                    <option value="users">Delete for Users Too (Full Purge)</option>
+                </select>
+                <button class="rounded-lg bg-rose-600/80 hover:bg-rose-600 px-4 py-2 text-xs font-bold text-white transition">Delete Entire Unit</button>
+            </form>
+        </details>
+    </section>
+
 </main>
+
+<script>
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.className = 'tab-button px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800';
+        });
+
+        const activeContent = document.getElementById(`tab-content-${tabId}`);
+        const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+        if (activeContent) activeContent.classList.remove('hidden');
+        if (activeBtn) {
+            activeBtn.className = 'tab-button px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-indigo-600 text-white shadow-md';
+        }
+
+        if (tabId === 'diagrams' && window.mermaid) {
+            try {
+                mermaid.run();
+            } catch (err) {}
+        }
+    }
+
+    function toggleRawCode(id, btn) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.toggle('hidden');
+            btn.textContent = el.classList.contains('hidden') ? 'Toggle Raw Syntax' : 'Hide Raw Syntax';
+        }
+    }
+
+    function filterQuizzes() {
+        const query = (document.getElementById('quiz-search')?.value || '').toLowerCase().trim();
+        const diff = document.getElementById('quiz-diff-filter')?.value || 'all';
+        const items = document.querySelectorAll('.quiz-item');
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const topic = item.getAttribute('data-topic') || '';
+            const itemDiff = item.getAttribute('data-diff') || '';
+
+            const matchesQuery = !query || topic.includes(query);
+            const matchesDiff = (diff === 'all') || (itemDiff === diff);
+
+            if (matchesQuery && matchesDiff) {
+                item.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                item.classList.add('hidden');
+            }
+        });
+
+        const display = document.getElementById('quiz-count-display');
+        if (display) display.textContent = visibleCount;
+    }
+
+    async function triggerRebuild(unitId, btn) {
+        if (!unitId) return;
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+        const origText = btn.innerHTML;
+        btn.innerHTML = `<span>⏳ Initiating...</span>`;
+        try {
+            await fetch(`/api/admin/pipeline/trigger/${unitId}`, { method: 'POST' });
+            window.location.reload();
+        } catch (err) {
+            alert('Failed to trigger pipeline: ' + err);
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+            btn.innerHTML = origText;
+        }
+    }
+</script>
 </body>
 </html>
