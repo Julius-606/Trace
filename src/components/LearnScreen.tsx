@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -10,7 +10,10 @@ import {
   HelpCircle,
   BookOpen,
   ArrowRight,
-  RotateCw
+  RotateCw,
+  Lightbulb,
+  FileText,
+  Workflow
 } from 'lucide-react';
 import { Unit, Subtopic, SubtopicObjective } from '../types';
 import { FormattedText } from './FormattedText';
@@ -59,10 +62,60 @@ export const LearnScreen: React.FC<LearnScreenProps> = ({
   const [bookmarkNote, setBookmarkNote] = useState('');
   const [showBookmarkInput, setShowBookmarkInput] = useState(false);
 
+  // Perspective modes: 'mastery' (lecture notes & diagram) | 'analogy' | 'pearls'
+  const [activePerspective, setActivePerspective] = useState<'mastery' | 'analogy' | 'pearls'>('mastery');
+
+  // Dynamic backend enrichment & on-demand pipeline state
+  const [dynamicEnrichment, setDynamicEnrichment] = useState<{
+    technical_explanation?: string;
+    intuitive_explanation?: string;
+    clinical_takeaway?: string;
+    diagram_code?: string;
+    diagram_caption?: string;
+  } | null>(null);
+  const [isLoadingEnrichment, setIsLoadingEnrichment] = useState(false);
+
   // Inline AI Query state
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Fetch or on-demand generate expansive content from backend
+  useEffect(() => {
+    if (!activeSubtopic) return;
+
+    let isMounted = true;
+    setIsLoadingEnrichment(true);
+
+    fetch(`/api/enrichment/subtopic/${activeSubtopic.id}`)
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('Fallback to static outline');
+      })
+      .then((data) => {
+        if (isMounted && data) {
+          setDynamicEnrichment({
+            technical_explanation: data.technical_explanation,
+            intuitive_explanation: data.intuitive_explanation,
+            clinical_takeaway: data.clinical_takeaway,
+            diagram_code: data.diagram_code,
+            diagram_caption: data.diagram_caption
+          });
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setDynamicEnrichment(null);
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingEnrichment(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeSubtopic?.id]);
 
   const handleToggleComplete = async () => {
     if (!activeSubtopic) return;
@@ -251,27 +304,101 @@ export const LearnScreen: React.FC<LearnScreenProps> = ({
         </div>
       )}
 
+      {/* Learning Perspectives: Mastery, Analogy, Exam Pearls */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <button
+          onClick={() => setActivePerspective('mastery')}
+          className={`px-4 py-2 rounded-2xl font-bold transition-all whitespace-nowrap border flex items-center gap-2 ${
+            activePerspective === 'mastery'
+              ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/20'
+              : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 border-slate-800'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>Foundations to Mastery</span>
+        </button>
+        <button
+          onClick={() => setActivePerspective('analogy')}
+          className={`px-4 py-2 rounded-2xl font-bold transition-all whitespace-nowrap border flex items-center gap-2 ${
+            activePerspective === 'analogy'
+              ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/20'
+              : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 border-slate-800'
+          }`}
+        >
+          <Lightbulb className="w-3.5 h-3.5 text-amber-300" />
+          <span>Explain with analogy</span>
+        </button>
+        <button
+          onClick={() => setActivePerspective('pearls')}
+          className={`px-4 py-2 rounded-2xl font-bold transition-all whitespace-nowrap border flex items-center gap-2 ${
+            activePerspective === 'pearls'
+              ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/20'
+              : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 border-slate-800'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+          <span>Exam pearls</span>
+        </button>
+      </div>
+
       {/* Main Learning Content Panel */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-xl">
-        {currentObjective ? (
+      <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-xl space-y-4">
+        {isLoadingEnrichment ? (
+          <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
+            <RotateCw className="w-6 h-6 animate-spin text-indigo-400" />
+            <p className="text-xs font-semibold">Retrieving expansive curriculum notes from pipeline vault...</p>
+          </div>
+        ) : activePerspective === 'analogy' ? (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-800/50 space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-2">
+                <Lightbulb className="w-4 h-4 text-amber-400" />
+                Intuitive Pedagogical Analogy
+              </span>
+              <p className="text-sm text-indigo-100 leading-relaxed font-sans">
+                {dynamicEnrichment?.intuitive_explanation ||
+                  `Imagine ${activeSubtopic?.name} like an interconnected mechanical relay where each step safely gates the subsequent reaction to preserve system integrity.`}
+              </p>
+            </div>
+          </div>
+        ) : activePerspective === 'pearls' ? (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                High-Yield Exam Pearls & Critical Pitfalls
+              </span>
+              <p className="text-sm text-amber-100 leading-relaxed font-sans">
+                {dynamicEnrichment?.clinical_takeaway ||
+                  `Critical takeaway for ${activeSubtopic?.name}: Always verify foundational parameters and rule out diagnostic/architectural edge cases before committing state.`}
+              </p>
+            </div>
+          </div>
+        ) : (
           <div>
             <div className="border-b border-slate-800/80 pb-4 mb-6">
               <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 block mb-1">
-                Learning Objective {currentObjIndex + 1} of {objectives.length}
+                {objectives.length > 0
+                  ? `Learning Objective ${currentObjIndex + 1} of ${objectives.length}`
+                  : `Structured Curriculum Module`}
               </span>
-              <h2 className="text-xl sm:text-2xl font-black text-white">{currentObjective.title}</h2>
-              <p className="text-sm text-slate-400 mt-1">{currentObjective.description}</p>
+              <h2 className="text-xl sm:text-2xl font-black text-white">
+                {currentObjective?.title || activeSubtopic?.name}
+              </h2>
+              <p className="text-sm text-slate-400 mt-1">
+                {currentObjective?.description || `Expansive syllabus breakdown and technical lecture notes.`}
+              </p>
             </div>
 
-            {/* Markdown rendered body */}
+            {/* Markdown rendered body (dynamic expansive notes or objective content) */}
             <FormattedText
-              text={currentObjective.content}
+              text={
+                dynamicEnrichment?.technical_explanation ||
+                currentObjective?.content ||
+                `### ${activeSubtopic?.name}\n\nComprehensive lecture notes are loading from the database pipeline...`
+              }
               onLinkClick={(url) => onOpenBrowser(url)}
             />
-          </div>
-        ) : (
-          <div className="text-center py-12 text-slate-400">
-            No objectives configured for this topic.
           </div>
         )}
 
@@ -326,30 +453,8 @@ export const LearnScreen: React.FC<LearnScreenProps> = ({
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">
               Socratic Consultant Inquiry
             </h3>
-            <p className="text-xs text-slate-400">Ask any clinical question or request deep physiological analogies</p>
+            <p className="text-xs text-slate-400">Ask any clinical or technical question or request deep domain analogies</p>
           </div>
-        </div>
-
-        {/* Quick Inquiry Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-          <button
-            onClick={() => handleAskAi('Explain this mechanism step-by-step using a clinical analogy.')}
-            className="px-3 py-1.5 rounded-full bg-slate-800/90 hover:bg-indigo-950 text-slate-300 hover:text-indigo-300 border border-slate-700/60 transition-colors whitespace-nowrap"
-          >
-            Explain with analogy
-          </button>
-          <button
-            onClick={() => handleAskAi('What are the most common diagnostic traps or board exam questions on this?')}
-            className="px-3 py-1.5 rounded-full bg-slate-800/90 hover:bg-indigo-950 text-slate-300 hover:text-indigo-300 border border-slate-700/60 transition-colors whitespace-nowrap"
-          >
-            Common exam traps
-          </button>
-          <button
-            onClick={() => handleAskAi('How does this directly alter patient management and pharmacotherapy?')}
-            className="px-3 py-1.5 rounded-full bg-slate-800/90 hover:bg-indigo-950 text-slate-300 hover:text-indigo-300 border border-slate-700/60 transition-colors whitespace-nowrap"
-          >
-            Patient management impact
-          </button>
         </div>
 
         {/* Input bar */}
@@ -358,19 +463,20 @@ export const LearnScreen: React.FC<LearnScreenProps> = ({
             e.preventDefault();
             handleAskAi();
           }}
-          className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl p-1.5 focus-within:border-indigo-500 transition-colors"
+          className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl p-2 focus-within:border-indigo-500 transition-colors"
         >
           <input
             type="text"
             value={aiQuestion}
             onChange={(e) => setAiQuestion(e.target.value)}
-            placeholder="Type your inquiry for this subtopic..."
+            placeholder={activeSubtopic ? `Ask about ${activeSubtopic.name}...` : "Type your inquiry for this subtopic..."}
             className="flex-1 bg-transparent px-3 py-1 text-xs text-white placeholder-slate-500 outline-none"
           />
           <button
             type="submit"
             disabled={isAiLoading || !aiQuestion.trim()}
-            className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-colors"
+            className="p-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-40 transition-colors shadow-md"
+            title="Send query to Socratic engine"
           >
             <Send className="w-3.5 h-3.5" />
           </button>

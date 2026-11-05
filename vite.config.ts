@@ -54,6 +54,20 @@ function traceApiFallbackPlugin(): Plugin {
           return;
         }
 
+        if (url.startsWith('/api/enrichment/subtopic') || url.includes('/content')) {
+          res.statusCode = 200;
+          res.end(JSON.stringify({
+            status: 'success',
+            node_name: 'Core Curriculum Module',
+            technical_explanation: '### Comprehensive Syllabus Foundation\n\n- **Primary Operational Mechanics**: Detailed functional datapath execution and multi-stage logic.\n- **Architectural Specifications**: Register allocation, status flags, and signal sequencing.',
+            intuitive_explanation: 'Pedagogical analogy: Structured workflow mapping inputs to outputs reliably.',
+            clinical_takeaway: 'High-yield exam pearl: Confirm parameter validation before committing execution state.',
+            diagram_code: 'graph TD\n  A["Input Operands"] --> B["Processing Engine"]\n  B --> C["Output Registers"]',
+            quizzes: []
+          }));
+          return;
+        }
+
         if (url.startsWith('/api/zenith/insight')) {
           res.statusCode = 200;
           res.end(JSON.stringify({

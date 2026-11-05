@@ -24,7 +24,14 @@ class User(Base):
     interests = Column(JSON, default=list)
     trace_coins = Column(Integer, default=200)
 
+    # Multi-platform channels & account linking
+    phone_number = Column(String(50), unique=True, index=True, nullable=True)
+    telegram_chat_id = Column(String(50), unique=True, index=True, nullable=True)
+    magic_token = Column(String(100), unique=True, index=True, nullable=True)
+    magic_token_expires_at = Column(Float, nullable=True)
+
     # Relationships
+    channels = relationship("UserChannel", back_populates="user", cascade="all, delete-orphan")
     units = relationship("Unit", back_populates="owner", cascade="all, delete-orphan")
     quiz_history = relationship("QuizHistory", back_populates="owner", cascade="all, delete-orphan")
     chat_messages = relationship("ChatMessage", back_populates="owner", cascade="all, delete-orphan")
@@ -42,8 +49,30 @@ class User(Base):
                 self.units.append(Unit(name=u_name, is_active=True))
 
     @property
+    def neurons(self) -> int:
+        return self.trace_coins or 0
+
+    @neurons.setter
+    def neurons(self, val: int):
+        self.trace_coins = val
+
+    @property
     def active_units_list(self):
         return [u.name for u in self.units if u.is_active]
+
+
+class UserChannel(Base):
+    """Normalized multi-platform channel mapping table for Telegram, WhatsApp, Web, and Android."""
+    __tablename__ = "user_channels"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel_type = Column(String(50), nullable=False) # "telegram", "whatsapp", "web", "android"
+    channel_identifier = Column(String(100), nullable=False, index=True) # telegram chat_id or phone number
+    linked_at = Column(Float, nullable=False)
+    is_active = Column(Boolean, default=True)
+
+    user = relationship("User", back_populates="channels")
 
 class Unit(Base):
 
@@ -94,6 +123,7 @@ class Subtopic(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), index=True)
     is_completed = Column(Boolean, default=False)
+    content = Column(Text, nullable=True) # Full expansive syllabus notes & lecture breakdowns
 
     topic_id = Column(Integer, ForeignKey("topics.id"))
     topic = relationship("Topic", back_populates="subtopics")
@@ -107,6 +137,7 @@ class LearningObjective(Base):
     id = Column(Integer, primary_key=True, index=True)
     description = Column(Text)
     is_completed = Column(Boolean, default=False)
+    content = Column(Text, nullable=True) # Detailed objective-level markdown content
 
     subtopic_id = Column(Integer, ForeignKey("subtopics.id"))
     subtopic = relationship("Subtopic", back_populates="learning_objectives")
@@ -120,6 +151,8 @@ class UserSyllabusProgress(Base):
     node_type = Column(String(50)) # "unit", "module", "topic", "subtopic"
     status = Column(String(50), default="Locked") # "Locked", "Unlocked", "In_Progress", "Completed"
     last_studied_at = Column(Float, nullable=True)
+    version = Column(Integer, default=1)
+    updated_at = Column(Float, nullable=True)
 
     user = relationship("User")
 

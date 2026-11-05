@@ -167,8 +167,11 @@ def build_curriculum_catalog(db: Session) -> List[Dict[str, Any]]:
 
         if prog:
             p_status = prog.status
-            p_percent = prog.progress_percent
             p_completed = prog.completed_subtopics
+            if total_subtopics > 0 and (prog.progress_percent == 0 or prog.progress_percent is None) and p_completed > 0:
+                p_percent = round((p_completed / total_subtopics) * 100, 1)
+            else:
+                p_percent = prog.progress_percent
             p_step = prog.current_step
         elif q_count > 0 or enrichment_count > 0:
             p_status = "completed"
@@ -444,15 +447,22 @@ def get_pipeline_status_api(request: Request, db: Session = Depends(get_db)):
         if not status_val:
             status_val = "completed" if (q_count > 0 or e_count > 0) else "idle"
 
+        completed_count = prog.get("completed_subtopics", total_subtopics if status_val == "completed" else 0)
+        raw_percent = prog.get("progress_percent", 100.0 if status_val == "completed" else 0.0)
+        if total_subtopics > 0 and (raw_percent == 0 or raw_percent is None) and completed_count > 0:
+            calc_percent = round((completed_count / total_subtopics) * 100, 1)
+        else:
+            calc_percent = raw_percent or 0.0
+
         results[u.id] = {
             "unit_id": u.id,
             "unit_name": u.name,
             "status": status_val,
             "total_subtopics": total_subtopics,
-            "completed_subtopics": prog.get("completed_subtopics", total_subtopics if status_val == "completed" else 0),
+            "completed_subtopics": completed_count,
             "quizzes_generated": q_count,
             "diagrams_generated": e_count,
-            "progress_percent": prog.get("progress_percent", 100.0 if status_val == "completed" else 0.0),
+            "progress_percent": calc_percent,
             "current_step": prog.get("current_step", f"Ready: {q_count} Quizzes • {e_count} Diagrams" if status_val == "completed" else "Content generation pending")
         }
 

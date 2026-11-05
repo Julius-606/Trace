@@ -134,7 +134,10 @@ def upload_syllabus(payload: dict, user_id: str, db: Session = Depends(get_db)):
 
 @router.get("/enrichment/subtopic/{subtopic_id}", response_model=schemas.NodeEnrichmentResponse)
 def get_subtopic_enrichment(subtopic_id: int, db: Session = Depends(get_db)):
-    """Fetches pre-generated multi-perspective notes and Mermaid diagram for a subtopic."""
+    """
+    Fetches pre-generated multi-perspective notes and Mermaid diagram for a subtopic.
+    If not yet piped, automatically generates and persists it on-the-fly.
+    """
     enrichment = db.query(models.NodeEnrichment).filter(
         models.NodeEnrichment.node_id == subtopic_id,
         models.NodeEnrichment.node_type == "subtopic"
@@ -144,16 +147,28 @@ def get_subtopic_enrichment(subtopic_id: int, db: Session = Depends(get_db)):
         subtopic = db.query(models.Subtopic).filter(models.Subtopic.id == subtopic_id).first()
         if not subtopic:
             raise HTTPException(status_code=404, detail="Subtopic not found")
-        # On-demand fallback enrichment
+        # On-demand JIT generation and immediate database persistence
+        from app.services.content_pipeline import ensure_subtopic_content_enriched
+        try:
+            ensure_subtopic_content_enriched(db, subtopic_id)
+            enrichment = db.query(models.NodeEnrichment).filter(
+                models.NodeEnrichment.node_id == subtopic_id,
+                models.NodeEnrichment.node_type == "subtopic"
+            ).first()
+        except Exception as e:
+            pass
+
+    if not enrichment:
+        # Extreme emergency fallback
         from app.services.content_pipeline import generate_fallback_diagram
         diagram = generate_fallback_diagram(subtopic.name, "subtopic")
         return schemas.NodeEnrichmentResponse(
             node_id=subtopic.id,
             node_type="subtopic",
             node_name=subtopic.name,
-            intuitive_explanation=f"Core intuitive grasp: Understand {subtopic.name} as an interconnected clinical mechanism.",
-            technical_explanation=f"Formal medical science breakdown of {subtopic.name}.",
-            clinical_takeaway=f"Bedside priority: Verify clinical stability and therapeutic response.",
+            intuitive_explanation=f"Conceptual intuition: {subtopic.name}.",
+            technical_explanation=f"Technical specification of {subtopic.name}.",
+            clinical_takeaway=f"High-yield takeaway: Master core fundamentals of {subtopic.name}.",
             diagram_type=diagram["diagram_type"],
             diagram_code=diagram["diagram_code"],
             diagram_caption=diagram["diagram_caption"],
@@ -161,6 +176,23 @@ def get_subtopic_enrichment(subtopic_id: int, db: Session = Depends(get_db)):
         )
 
     return enrichment
+
+
+@router.get("/subtopics/{subtopic_id}/content")
+@router.get("/learning/subtopic/{subtopic_id}")
+def get_subtopic_learning_bundle(subtopic_id: int, db: Session = Depends(get_db)):
+    """
+    Returns the comprehensive, expansive learning module for a subtopic.
+    If the subtopic has NOT yet been piped through the background queue,
+    the backend automatically generates the expansive content on-the-fly and
+    commits it to the database (JUST AS in the pipes), returning the newly saved data.
+    """
+    from app.services.content_pipeline import ensure_subtopic_content_enriched
+    try:
+        data = ensure_subtopic_content_enriched(db, subtopic_id)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.get("/quiz-pool/{unit_name}")
 def get_unit_quiz_pool(unit_name: str, db: Session = Depends(get_db)):

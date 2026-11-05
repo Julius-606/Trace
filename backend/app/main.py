@@ -68,6 +68,10 @@ try:
             ("is_email_verified", "BOOLEAN DEFAULT FALSE" if is_postgres else "BOOLEAN DEFAULT 0"),
             ("interests", "JSON" if is_postgres else "TEXT"),
             ("trace_coins", "INTEGER DEFAULT 200"),
+            ("phone_number", "VARCHAR(50)"),
+            ("telegram_chat_id", "VARCHAR(50)"),
+            ("magic_token", "VARCHAR(100)"),
+            ("magic_token_expires_at", "DOUBLE PRECISION" if is_postgres else "FLOAT"),
         ]
         for col_name, col_type in user_columns:
             try:
@@ -186,6 +190,18 @@ try:
             else:
                 init_db.execute(text("ALTER TABLE units ADD COLUMN price_t_coins INTEGER DEFAULT 20;"))
                 init_db.execute(text("UPDATE units SET price_t_coins = 20 WHERE price_t_coins IS NULL;"))
+            init_db.commit()
+        except Exception as err:
+            init_db.rollback()
+
+        # 10. 'content' column on subtopics & learning_objectives (for expansive syllabus learning notes)
+        try:
+            if is_postgres:
+                init_db.execute(text("ALTER TABLE subtopics ADD COLUMN IF NOT EXISTS content TEXT;"))
+                init_db.execute(text("ALTER TABLE learning_objectives ADD COLUMN IF NOT EXISTS content TEXT;"))
+            else:
+                init_db.execute(text("ALTER TABLE subtopics ADD COLUMN content TEXT;"))
+                init_db.execute(text("ALTER TABLE learning_objectives ADD COLUMN content TEXT;"))
             init_db.commit()
         except Exception as err:
             init_db.rollback()
