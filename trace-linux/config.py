@@ -1,9 +1,10 @@
 """
 TRACE Desktop (Linux Client) - XDG Compliance & Path Configuration
 FILE: trace-linux/config.py
-VERSION: 1.0.0
+VERSION: 1.1.0
 ROLE: Resolves Linux system paths strictly conforming to the XDG Base Directory
       Specification ($XDG_DATA_HOME, $XDG_CONFIG_HOME, $XDG_CACHE_HOME).
+      Configures backend API synchronization and offline cache endpoints.
 """
 
 import os
@@ -13,7 +14,7 @@ from pathlib import Path
 # Application Metadata
 APP_NAME = "trace"
 APP_DISPLAY_NAME = "TRACE Desktop"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 # XDG Base Directory Resolution
 # 1. Data Home (default: ~/.local/share)
@@ -28,7 +29,7 @@ TRACE_CONFIG_DIR = XDG_CONFIG_HOME / APP_NAME
 XDG_CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
 TRACE_CACHE_DIR = XDG_CACHE_HOME / APP_NAME
 
-# 4. Local Database Location
+# 4. Local Database Location (XDG Compliant SQLite Vault)
 DATABASE_FILE = TRACE_DATA_DIR / "trace_local.db"
 DATABASE_URI = f"sqlite:///{DATABASE_FILE}"
 
@@ -37,11 +38,22 @@ SYLLABI_DIR = TRACE_DATA_DIR / "syllabi"
 ASSETS_DIR = TRACE_DATA_DIR / "assets"
 LOGS_DIR = TRACE_DATA_DIR / "logs"
 
-# Central Backend API Endpoint (Satellite Routing)
-DEFAULT_BACKEND_URL = os.environ.get("TRACE_API_URL", "http://127.0.0.1:7860")
+# Central Backend API Endpoints (Main Source of Truth)
+DEFAULT_BACKEND_URL = os.environ.get("TRACE_API_URL", os.environ.get("TRACE_BACKEND_URL", "http://127.0.0.1:7860"))
 CLOUD_BACKEND_URL = os.environ.get("TRACE_CLOUD_URL", "https://huggingface.co/spaces/Agent606/Trace")
 
-# Initial Currency Grant for New Profiles
+# API Route Definitions
+ENDPOINT_LOGIN = "/api/auth/login"
+ENDPOINT_SIGNUP = "/api/auth/signup"
+ENDPOINT_REQUEST_OTP = "/api/request-otp"
+ENDPOINT_VERIFY_OTP = "/api/verify-otp"
+ENDPOINT_DASHBOARD = "/api/users/{user_id}/dashboard"
+ENDPOINT_SYLLABUSES = "/api/syllabuses"
+ENDPOINT_SYLLABUS_TREE = "/api/syllabuses/{unit_id}/tree"
+ENDPOINT_QUIZ_RECORD = "/api/learning/quiz/record"
+ENDPOINT_AI_CHAT = "/api/v1/ai/chat"
+
+# Virtual Currency & Economy
 INITIAL_NEURONS_BALANCE = 200
 DEFAULT_UNIT_PRICE_NEURONS = 20
 

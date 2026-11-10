@@ -1,9 +1,10 @@
 """
 TRACE Desktop (Linux Client) - SQLite Database Layer
 FILE: trace-linux/database.py
-VERSION: 1.0.0
+VERSION: 1.1.0
 ROLE: Manages the local SQLite database at ~/.local/share/trace/trace_local.db,
-      enforcing row factories, atomic schema initialization, and integrity constraints.
+      enforcing offline caching of user credentials, backend syllabi, progress,
+      and synchronization queues alongside the Neurons currency economy.
 """
 
 import sqlite3
@@ -49,18 +50,39 @@ def transaction() -> Generator[sqlite3.Connection, None, None]:
 
 def init_database() -> None:
     """
-    Initializes all core schema tables required for the TRACE desktop client:
-    1. user_wallet: Stores user's virtual Neurons currency (single-row enforced id = 1).
-    2. unlocked_units: Tracks unlocked/purchased units with timestamp and neurons spent.
-    3. unit_progress: Tracks unit mastery, score, and status (LOCKED/UNLOCKED/COMPLETED).
-    4. offline_ai_prompts: Staged local queries for synchronization with server.
-    5. quiz_history: Detailed records of past active recall assessments.
-    6. study_tasks: Chronotype study plan and daily tasks.
+    Initializes all core schema tables required for offline-first operation:
+    1. user_session: Stores active user profile & JWT token cached from backend.
+    2. user_wallet: Stores local Neurons virtual currency balance.
+    3. unlocked_units: Local registry of unlocked course units.
+    4. unit_progress: Completion status (LOCKED / UNLOCKED / COMPLETED) & scores.
+    5. cached_units: Units and syllabi cached from the central backend.
+    6. sync_queue: Queued offline events (quiz results, unlocks) to sync to cloud.
+    7. offline_ai_prompts: Staged local AI queries for synchronization.
+    8. quiz_history: Assessment outcomes and performance tracking.
+    9. study_tasks: Chronotype study plan and schedule tasks.
+    10. bookmarks: Saved academic notes and references.
     """
     with transaction() as conn:
         cursor = conn.cursor()
 
-        # 1. user_wallet table (Single-row constraint where id = 1)
+        # 1. user_session table (Cached authentication state from backend)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_session (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                user_id TEXT NOT NULL,
+                username TEXT NOT NULL,
+                email TEXT,
+                token TEXT,
+                role TEXT DEFAULT 'Student',
+                semester_status TEXT DEFAULT 'Year 4 - Academic Candidate',
+                sensory_mode TEXT DEFAULT 'Visual',
+                ai_persona TEXT DEFAULT 'Socratic Mentor',
+                is_logged_in INTEGER NOT NULL DEFAULT 1,
+                last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # 2. user_wallet table (Single-row constraint where id = 1)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_wallet (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -71,7 +93,6 @@ def init_database() -> None:
             );
         """)
 
-        # Seed initial wallet balance if table is empty
         cursor.execute("SELECT COUNT(*) AS cnt FROM user_wallet WHERE id = 1;")
         row = cursor.fetchone()
         if row["cnt"] == 0:
@@ -80,7 +101,7 @@ def init_database() -> None:
                 VALUES (1, ?, ?, 0);
             """, (INITIAL_NEURONS_BALANCE, INITIAL_NEURONS_BALANCE))
 
-        # 2. unlocked_units table (Tracks purchased course units)
+        # 3. unlocked_units table (Tracks purchased course units)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS unlocked_units (
                 unit_id TEXT PRIMARY KEY,
@@ -91,7 +112,7 @@ def init_database() -> None:
             );
         """)
 
-        # 3. unit_progress table (Tracks mastery & completion state)
+        # 4. unit_progress table (Tracks mastery & completion state)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS unit_progress (
                 unit_id TEXT PRIMARY KEY,
@@ -102,7 +123,35 @@ def init_database() -> None:
             );
         """)
 
-        # 4. offline_ai_prompts table (Staging for client-satellite synchronization)
+        # 5. cached_units table (Locally mirrors units from central PostgreSQL backend)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cached_units (
+                id INTEGER PRIMARY KEY,
+                backend_unit_id INTEGER UNIQUE,
+                name TEXT NOT NULL,
+                category TEXT DEFAULT 'General',
+                course TEXT DEFAULT 'General',
+                unit_group TEXT,
+                price_t_coins INTEGER DEFAULT 20,
+                is_active INTEGER DEFAULT 1,
+                is_unlocked INTEGER DEFAULT 0,
+                raw_json TEXT,
+                last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # 6. sync_queue table (Queues offline events to commit to remote backend)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sync_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,  -- 'QUIZ_RECORD', 'UNIT_UNLOCK', 'NOTE_SYNC'
+                payload_json TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_synced INTEGER NOT NULL DEFAULT 0
+            );
+        """)
+
+        # 7. offline_ai_prompts table (Staging for client-satellite synchronization)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS offline_ai_prompts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,7 +163,7 @@ def init_database() -> None:
             );
         """)
 
-        # 5. quiz_history table (Active recall assessment outcomes)
+        # 8. quiz_history table (Active recall assessment outcomes)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS quiz_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,7 +177,7 @@ def init_database() -> None:
             );
         """)
 
-        # 6. study_tasks table (Desktop task manager)
+        # 9. study_tasks table (Desktop task manager)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS study_tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -141,7 +190,7 @@ def init_database() -> None:
             );
         """)
 
-        # 7. bookmarks table (Saved references and notes)
+        # 10. bookmarks table (Saved references and notes)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS bookmarks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

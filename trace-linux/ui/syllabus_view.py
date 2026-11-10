@@ -1,8 +1,8 @@
 """
 TRACE Desktop (Linux Client) - Syllabus Browser & Unit Unlock Cards
 FILE: trace-linux/ui/syllabus_view.py
-VERSION: 1.0.0
-ROLE: Renders hierarchical course trees from local JSON files and backend APIs.
+VERSION: 1.1.0
+ROLE: Renders hierarchical course trees from local JSON files and cached backend units.
       Provides atomic unit unlocking via Neurons currency transactions.
 """
 
@@ -32,9 +32,10 @@ from config import SYLLABI_DIR, DEFAULT_UNIT_PRICE_NEURONS
 class SyllabusView(QWidget):
     """
     Syllabus & Curriculum browser with interactive unlock cards and tree drilldowns.
+    Supports both local filesystem JSON curriculum and cached central backend units.
     """
-    unitUnlocked = Signal(str) # Emits unit_id upon unlock
-    startAssessmentRequested = Signal(str, str) # Emits (unit_id, unit_title)
+    unitUnlocked = Signal(str)  # Emits unit_id upon unlock
+    startAssessmentRequested = Signal(str, str)  # Emits (unit_id, unit_title)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -164,7 +165,7 @@ class SyllabusView(QWidget):
         self.selected_unit_data = None
 
     def load_syllabi_from_disk(self):
-        """Scans ~/.local/share/trace/syllabi/ for JSON syllabi and renders cards."""
+        """Scans local JSON files and cached PostgreSQL backend units to render cards."""
         self.current_syllabi_data = []
 
         # Clear existing card widgets
@@ -173,11 +174,12 @@ class SyllabusView(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
+        # 1. Load Local JSON Files
         syllabi_files = list(SYLLABI_DIR.glob("*.json"))
-        # Fallback to local package folder if XDG directory was fresh
         if not syllabi_files:
             fallback_dir = Path(__file__).resolve().parent.parent / "syllabi"
-            syllabi_files = list(fallback_dir.glob("*.json"))
+            if fallback_dir.exists():
+                syllabi_files = list(fallback_dir.glob("*.json"))
 
         for file_path in syllabi_files:
             try:
@@ -186,6 +188,74 @@ class SyllabusView(QWidget):
             except Exception as e:
                 print(f"[TRACE] Error parsing {file_path.name}: {e}")
 
+        # 2. Merge Cached Backend Units from SQLite
+        cached_backend_units = TraceRepository.get_cached_backend_units()
+        if cached_backend_units:
+            # Group backend units by course or category
+            course_map = {}
+            for row in cached_backend_units:
+                course_name = row.get("course") or "Central Curriculum"
+                if course_name not in course_map:
+                    course_map[course_name] = {
+                        "course_id": f"cloud_{course_name.lower().replace(' ', '_')}",
+                        "course_title": course_name,
+                        "discipline": row.get("category", "General"),
+                        "source": "backend_cache",
+                        "units": []
+                    }
+
+                # Construct unit object
+                u_id = str(row.get("backend_unit_id") or row.get("id"))
+                u_title = row.get("name", "Unit")
+                u_cost = int(row.get("price_t_coins", 20))
+
+                # Parse raw_json if modules are embedded
+                raw_modules = []
+                try:
+                    if row.get("raw_json"):
+                        parsed_raw = json.loads(row["raw_json"])
+                        raw_modules = parsed_raw.get("modules", [])
+                except Exception:
+                    pass
+
+                if not raw_modules:
+                    raw_modules = [
+                        {
+                            "module_id": f"mod_{u_id}_1",
+                            "module_title": f"Foundations of {u_title}",
+                            "topics": [
+                                {
+                                    "topic_id": f"top_{u_id}_1",
+                                    "topic_title": "Core Principles & Taxonomy",
+                                    "subtopics": [
+                                        {
+                                            "subtopic_id": f"sub_{u_id}_1",
+                                            "subtopic_title": "Theoretical Framework",
+                                            "objectives": [
+                                                f"Define the key paradigms of {u_title}.",
+                                                "Differentiate between primary structural elements.",
+                                                "Synthesize active recall hypotheses for exam mastery."
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+
+                course_map[course_name]["units"].append({
+                    "unit_id": u_id,
+                    "unit_title": u_title,
+                    "cost_neurons": u_cost,
+                    "description": f"Curriculum Unit: {u_title} ({row.get('category', 'Core')})",
+                    "modules": raw_modules
+                })
+
+            for cloud_course in course_map.values():
+                # Avoid duplicates if matching course title already exists
+                if not any(c.get("course_title") == cloud_course["course_title"] for c in self.current_syllabi_data):
+                    self.current_syllabi_data.append(cloud_course)
+
         unlocked_ids = set(TraceRepository.get_all_unlocked_unit_ids())
 
         for course in self.current_syllabi_data:
@@ -193,7 +263,7 @@ class SyllabusView(QWidget):
             discipline = course.get("discipline", "Core Discipline")
 
             for unit in course.get("units", []):
-                unit_id = unit.get("unit_id")
+                unit_id = str(unit.get("unit_id"))
                 unit_title = unit.get("unit_title")
                 cost = unit.get("cost_neurons", DEFAULT_UNIT_PRICE_NEURONS)
                 desc = unit.get("description", "")
@@ -226,7 +296,7 @@ class SyllabusView(QWidget):
 
         # Header line with Title + Lock Status Badge
         top_row = QHBoxLayout()
-        code_label = QLabel(unit.get("unit_id", "UNIT"), card)
+        code_label = QLabel(str(unit.get("unit_id", "UNIT")), card)
         code_label.setStyleSheet("font-size: 11px; font-weight: 800; color: #818cf8; font-family: monospace;")
         top_row.addWidget(code_label)
 
@@ -270,7 +340,8 @@ class SyllabusView(QWidget):
         btn_row.addWidget(view_btn)
 
         if not is_unlocked:
-            unlock_btn = QPushButton(f"Unlock ({unit.get('cost_neurons', 20)} N)", card)
+            cost = unit.get("cost_neurons", 20)
+            unlock_btn = QPushButton(f"Unlock ({cost} N)", card)
             unlock_btn.setStyleSheet("""
                 QPushButton {
                     background-color: #f59e0b;
@@ -311,7 +382,7 @@ class SyllabusView(QWidget):
         self.action_info.setText("Unit unlocked! Launch active recall quiz." if is_unlocked else "Unit is locked. Spend Neurons to take quizzes.")
 
     def handle_unlock_request(self, course_id: str, unit: dict):
-        unit_id = unit.get("unit_id")
+        unit_id = str(unit.get("unit_id"))
         unit_title = unit.get("unit_title")
         cost = unit.get("cost_neurons", DEFAULT_UNIT_PRICE_NEURONS)
 
@@ -328,13 +399,13 @@ class SyllabusView(QWidget):
                 QMessageBox.information(self, "Unit Unlocked", msg)
                 self.unitUnlocked.emit(unit_id)
                 self.load_syllabi_from_disk()
-                if self.selected_unit_data and self.selected_unit_data.get("unit_id") == unit_id:
+                if self.selected_unit_data and str(self.selected_unit_data.get("unit_id")) == unit_id:
                     self.select_unit(self.selected_unit_data, True)
             else:
                 QMessageBox.warning(self, "Unlock Failed", msg)
 
     def on_launch_assessment_clicked(self):
         if self.selected_unit_data:
-            unit_id = self.selected_unit_data.get("unit_id")
+            unit_id = str(self.selected_unit_data.get("unit_id"))
             unit_title = self.selected_unit_data.get("unit_title")
             self.startAssessmentRequested.emit(unit_id, unit_title)

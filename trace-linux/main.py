@@ -2,9 +2,10 @@
 """
 TRACE Desktop (Linux Client) - Application Entry Point
 FILE: trace-linux/main.py
-VERSION: 1.0.0
+VERSION: 1.1.0
 ROLE: Boots the Linux desktop client, initializes XDG storage directories,
-      applies custom dark stylesheets, and launches the PyQt6/PySide6 window manager.
+      applies custom dark stylesheets, manages authentication session gates,
+      and launches the PyQt6/PySide6 window manager.
 """
 
 import sys
@@ -19,6 +20,7 @@ if str(CURRENT_DIR) not in sys.path:
 # Ensure XDG directories and database initialization
 from config import ensure_xdg_directories, APP_DISPLAY_NAME, APP_VERSION, DATABASE_FILE
 from database import init_database
+from repository import TraceRepository
 
 try:
     from PyQt6.QtWidgets import QApplication
@@ -39,12 +41,13 @@ except ImportError:
         sys.exit(1)
 
 from ui.main_window import MainWindow
+from ui.login_dialog import LoginDialog
 
 
 def main():
     print(f"[+] Initializing {APP_DISPLAY_NAME} v{APP_VERSION} ({QT_BACKEND} Engine)...")
 
-    # 1. Ensure XDG Directory Compliance
+    # 1. Ensure XDG Directory Compliance (~/.local/share/trace/, ~/.config/trace/)
     ensure_xdg_directories()
 
     # 2. Initialize Local SQLite Schema (~/.local/share/trace/trace_local.db)
@@ -64,11 +67,27 @@ def main():
         except Exception as e:
             print(f"[!] Warning: Could not load stylesheet: {e}")
 
-    # 5. Launch Main Window
-    window = MainWindow()
+    # 5. Check Active User Session
+    active_session = TraceRepository.get_active_session()
+
+    if not active_session:
+        # Prompt user with Login Dialog
+        print("[*] No active session found. Presenting Authentication Dialog...")
+        login_dlg = LoginDialog()
+        result = login_dlg.exec()
+        if result == LoginDialog.DialogCode.Accepted and login_dlg.user_session:
+            active_session = login_dlg.user_session
+        else:
+            # Automatic fallback to local offline student profile for convenience
+            print("[*] Authentication bypassed. Initializing offline student session...")
+            TraceRepository.login("student", "offline")
+            active_session = TraceRepository.get_active_session()
+
+    # 6. Launch Main Window
+    window = MainWindow(session=active_session)
     window.show()
 
-    print(f"[+] TRACE Desktop client successfully running. Window active.")
+    print(f"[+] TRACE Desktop client successfully running. Active user: {active_session.get('username') if active_session else 'Anonymous'}")
     sys.exit(app.exec())
 
 
