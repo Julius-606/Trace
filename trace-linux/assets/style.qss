@@ -1,0 +1,40 @@
+/* TRACE Desktop (Linux Client) - XFCE / Developer-First Dark Theme */
+
+QMainWindow {
+    background-color: #090d16;
+}
+
+QWidget {
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Liberation Sans", sans-serif;
+}
+
+QScrollBar:vertical {
+    border: none;
+    background: #0b0f19;
+    width: 8px;
+    margin: 0px 0px 0px 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background: #334155;
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #475569;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QToolTip {
+    background-color: #1e293b;
+    color: #ffffff;
+    border: 1px solid #475569;
+    padding: 6px;
+    border-radius: 6px;
+}

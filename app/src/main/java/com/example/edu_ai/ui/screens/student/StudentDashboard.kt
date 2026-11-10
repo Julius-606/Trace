@@ -64,7 +64,7 @@ fun StudentDashboard(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    val user = uiState.user ?: UserEntity(id = userId, username = "Student", role = "student", sensoryMode = "Visual", semesterStatus = "Year 4 - Medical Candidate", aiPersona = "Socratic Mentor")
+    val user = uiState.user ?: UserEntity(id = userId, username = "Student", role = "student", sensoryMode = "Visual", semesterStatus = "Year 4 - Academic Candidate", aiPersona = "Socratic Mentor")
 
     val progressViewModel: ProgressViewModel = viewModel(key = "progress_$userId", factory = ProgressViewModel.provideFactory(user))
     val recommendation by progressViewModel.recommendation.collectAsState()

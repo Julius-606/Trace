@@ -278,22 +278,27 @@ class CanvasSession(Base):
     title = Column(String(200), default="New Ingestion Session")
     chat_history = Column(JSON, default=list) # List of dicts: [{"role": "user" | "model", "content": "..."}]
     canvas_content = Column(Text, default="")  # Course structure/syllabus Markdown
-    field_name = Column(String(100), default="Clinical Medicine")
-    course_name = Column(String(100), default="MBChB")
+    field_name = Column(String(100), default="Applied Sciences & Humanities")
+    course_name = Column(String(100), default="Core Curriculum")
     unit_group_name = Column(String(100), nullable=True)
     last_updated = Column(Float)
 
 
 class EmailVerificationOTP(Base):
+    """
+    Secure OTP ledger tracking token hash at rest, expiration, and failed attempts.
+    """
     __tablename__ = "email_verification_otps"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(150), index=True)
-    otp = Column(String(10), index=True)
-    action = Column(String(50), default="signup")  # "signup" or "forgot_password"
-    created_at = Column(Float)
-    expires_at = Column(Float)
-    is_used = Column(Boolean, default=False)
+    email = Column(String(150), index=True, nullable=False)
+    hashed_otp = Column(String(128), index=True, nullable=True) # Cryptographically hashed at rest (PBKDF2/SHA256)
+    otp = Column(String(10), index=True, nullable=True)        # Fallback preview during sandbox development
+    action = Column(String(50), default="signup")              # "signup" or "forgot_password"
+    attempt_count = Column(Integer, default=0)                 # Failed attempts tracker for brute-force mitigation
+    created_at = Column(Float, nullable=False)
+    expires_at = Column(Float, nullable=False)                 # Strict 10-minute maximum expiration
+    is_used = Column(Boolean, default=False)                   # Single-use enforcement flag
 
 
 # ==============================================================================

@@ -27,7 +27,8 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = ['All', 'Pre-Clinical Sciences', 'Clinical Sciences', 'Diagnostic Medicine', 'Therapeutics'];
+  const derivedCategories = Array.from(new Set(units.map((u) => u.category).filter(Boolean)));
+  const categories = ['All', ...(derivedCategories.length > 0 ? derivedCategories : ['Foundations & Sciences', 'Engineering & Technology', 'Business & Law', 'Health Sciences', 'Humanities'])];
 
   const filtered = units.filter((u) => {
     const matchSearch =

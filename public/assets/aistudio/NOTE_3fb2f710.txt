@@ -1,0 +1,114 @@
+﻿I want to push this project to the next level, and build the linux version of TRACE. I want it to retain the features just like the android app features. Replacing the room db (android will be a data folder separate from the backend) and therefore a separate database file.
+
+Here is a comprehensive, production-ready engineering specification and prompt template designed specifically for Google AI Studio. You can copy and paste this complete document directly into your AI Studio workspace to have it generate the full implementation code for the Linux version of TRACE.
+
+Engineering Blueprint: TRACE Desktop (Linux Client)
+1. Project Overview & Objectives
+    • Project Name: TRACE Desktop (Linux Client)
+      
+    • Target Environment: Linux (optimized for XFCE/Xubuntu desktop environments, utilizing standard XDG base directory specifications).
+      
+    • Objective: Build a robust, feature-complete desktop client for TRACE that achieves 100% feature parity with the Android Jetpack Compose app, substituting the Android Room database with a native SQLite file stored in a dedicated local Linux data directory.
+      
+2. Architecture & File Structure
+The project must adhere to a modular Python architecture using PyQt6 (or PySide6) for a lightweight, responsive desktop UI, and SQLite for local data persistence.
+
+trace-linux/
+├── main.py                  # Application entry point and window manager
+├── config.py                # XDG-compliant path management and environment setup
+├── database.py              # SQLite connection, schema initialization, and migrations
+├── repository.py            # Data Access Layer (Neurons currency, unit unlocking, progress)
+├── ui/
+│   ├── __init__.py
+│   ├── main_window.py       # Main dashboard layout and navigation
+│   ├── syllabus_view.py     # Course syllabus browser and unit unlock cards
+│   ├── wallet_widget.py     # Live Neurons currency counter and top-up simulation
+│   └── assessment_view.py   # Quiz and unit assessment runner
+├── assets/                  # Local styling, icons, and themes
+└── syllabi/                 # Pre-loaded structured course syllabus JSON files
+3. Core Component Specifications
+Module 1: XDG Compliance & Storage (config.py)
+    • Must implement robust path resolution following the XDG Base Directory Specification:
+      
+        ◦ Primary data path: ~/.local/share/trace/ (respecting $XDG_DATA_HOME).
+          
+        ◦ Subdirectories to auto-create on startup: syllabi/, assets/.
+          
+        ◦ Database file location: ~/.local/share/trace/trace_local.db.
+          
+Module 2: Database Layer (database.py)
+    • Must use Python's built-in sqlite3 module with row factories enabled.
+      
+    • Schema Requirements:
+      
+        1. user_wallet: Stores the user's virtual currency (neurons_balance, single-row constraint where id = 1).
+           
+        2. unlocked_units: Tracks purchased/unlocked course units (unit_id PK, course_id, unlocked_timestamp, neurons_spent).
+           
+        3. unit_progress: Tracks completion status (unit_id PK, score, status CHECK constraint: LOCKED, UNLOCKED, COMPLETED, last_accessed).
+           
+Module 3: Repository & Transaction Logic (repository.py)
+    • Implements atomic transactions for the Neurons economy:
+      
+        ◦ Balance checks before unlocking.
+          
+        ◦ Atomic deduction of Neurons and insertion into unlocked_units and unit_progress.
+          
+        ◦ Methods: get_wallet_balance(), add_neurons(amount), unlock_unit(unit_id, course_id, cost), is_unit_unlocked(unit_id).
+          
+Module 4: Desktop User Interface (ui/main_window.py & components)
+    • Built with PyQt6 / PySide6.
+      
+    • Clean, dark-mode friendly styling matching developer-first Linux aesthetics.
+      
+    • Dashboard panels:
+      
+        ◦ Sidebar / Navigation: Switch between Dashboard, Syllabi, Assessment Center, and Wallet.
+          
+        ◦ Syllabus Browser: Renders hierarchical course structures loaded from local JSON files in syllabi/. Units display lock icons based on local SQLite state. Clicking a locked unit prompts the user to spend Neurons.
+          
+        ◦ Neurons Widget: Real-time badge showing current Neuron balance, with an action button to earn or simulate top-ups.
+          
+4. Implementation Prompt for Google AI Studio
+Prompt to copy into Google AI Studio:
+
+"Act as an expert Systems Architect and Python Desktop Developer. Using the architectural blueprint provided above, generate the complete, production-ready source code for the Linux desktop client of TRACE.
+
+Please provide the full implementation code for the following files without any omissions or placeholders:
+
+    1. config.py (Handling XDG directory creation for ~/.local/share/trace/)
+       
+    2. database.py (Initializing the SQLite schema with tables for user_wallet, unlocked_units, and unit_progress)
+       
+    3. repository.py (Implementing atomic transactions for the Neurons unlocking engine)
+       
+    4. ui/main_window.py (A clean PyQt6 desktop interface connecting the repository layer to interactive UI views for navigation, syllabus browsing, and the Neurons wallet counter)
+       
+Ensure all code is fully written out, robust, error-handled, and ready to execute on a Linux environment."
+Here is a precise, execution-ready plan for setting up Google AI Studio to serve as the intelligence core for your server-backed ecosystem (Project Orbit / Trace backend).
+
+Google AI Studio Integration Plan: Server-Side Core
+Phase 1: API Key & Model Configuration on the Backend Server
+    • Secure Storage: Store your Google AI Studio API key securely in the server's .env configuration file (GEMINI_API_KEY=your_key_here) so it never exposes credentials to client satellites (Linux CLI or Android app). 
+      
+    • Model Selection & Fallback: Bind your backend service (e.g., ai_service.py or llm.py) to the latest optimal models, setting up rotation or fallback logic between gemini-2.5-flash for high-speed scheduling and gemini-2.5-pro for deep clinical/code analysis. 
+      
+Phase 2: System Instructions & Structured JSON Schema Prompting
+    • System Persona Injection: Program the server-side client to pass a strict System Instruction establishing Gemini as Orbit / Trace Intelligence, your personal Life-OS and medical secretary. 
+      
+    • Structured Output Enforcement: Configure model calls to return rigid JSON schemas for scheduling actions (e.g., parsing task updates, rescheduling clashes, or breaking down clinical units into "Neurons") to ensure your FastAPI server can seamlessly ingest and write them straight to the central database. 
+      
+Phase 3: Backend API Endpoints for AI Operations
+    • Central Processing Routes: Implement specific FastAPI endpoints on the server that handle model queries:
+      
+        ◦ POST /api/v1/ai/chat: Manages conversational interactions, preserving message logs in archive_vault.json or the central database.
+          
+        ◦ POST /api/v1/ai/optimize-schedule: Ingests the current day's tasks, syllabus deadlines, and fatigue levels, allowing Gemini to re-index and return an optimized timetable.
+          
+        ◦ POST /api/v1/ai/parse-intent: Translates raw voice/text inputs from Android into structured database actions (ADD_TASK, RESCHEDULE, LOG_REMARK).
+          
+Phase 4: Client Satellite Integration
+    • Thin-Client Request Routing: Ensure neither your Linux workstation terminal nor your Android app (Pocket Orbit) calls Google AI Studio directly; instead, both make lightweight HTTP requests to your central server's AI endpoints.
+      
+    • Offline Staging Handling: Program the Android app to cache or stage AI prompts locally if offline, forwarding them to the server backend for AI processing the moment connection is re-established. 
+

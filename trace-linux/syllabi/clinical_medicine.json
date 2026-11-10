@@ -1,0 +1,63 @@
+{
+  "course_id": "med_core_2026",
+  "course_title": "Health Sciences & Clinical Diagnostics",
+  "discipline": "Health & Medical Sciences",
+  "units": [
+    {
+      "unit_id": "MED201",
+      "unit_title": "Cardiovascular Pathophysiology & Hemodynamics",
+      "cost_neurons": 20,
+      "description": "High-yield understanding of cardiac electrophysiology, pressure-volume loops, and acute coronary syndrome.",
+      "modules": [
+        {
+          "module_id": "MED201-M1",
+          "module_title": "Hemodynamic Principles & Ventricular Function",
+          "topics": [
+            {
+              "topic_id": "MED201-M1-T1",
+              "topic_title": "Preload, Afterload, and Inotropy",
+              "subtopics": [
+                {
+                  "subtopic_id": "MED201-M1-T1-S1",
+                  "subtopic_title": "Frank-Starling Relationship & Valvular Disease",
+                  "objectives": [
+                    "Correlate pressure-volume loop shifts with aortic stenosis vs regurgitation",
+                    "Differentiate cardiogenic shock compensation mechanisms"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "unit_id": "MED202",
+      "unit_title": "Pharmacology & Receptor Kinetics",
+      "cost_neurons": 20,
+      "description": "Agonist-antagonist dose-response relationships, pharmacokinetics, and antimicrobial stewardship.",
+      "modules": [
+        {
+          "module_id": "MED202-M1",
+          "module_title": "Autonomic Nervous System Therapeutics",
+          "topics": [
+            {
+              "topic_id": "MED202-M1-T1",
+              "topic_title": "Adrenergic & Cholinergic Signaling",
+              "subtopics": [
+                {
+                  "subtopic_id": "MED202-M1-T1-S1",
+                  "subtopic_title": "Receptor Selectivity and Second Messenger Cascades",
+                  "objectives": [
+                    "Master beta-blocker selectivity and adverse effect profiles",
+                    "Understand organophosphate toxicity and reversal"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

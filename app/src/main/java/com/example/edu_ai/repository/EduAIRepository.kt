@@ -167,7 +167,7 @@ class EduAIRepository(
                     username = userId,
                     role = "Student",
                     sensoryMode = "Visual",
-                    semesterStatus = "Year 4 - Medical Candidate",
+                    semesterStatus = "Year 4 - Academic Candidate",
                     aiPersona = "Socratic Mentor"
                 )
                 dao.insertUser(devUser)

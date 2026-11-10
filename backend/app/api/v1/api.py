@@ -5,13 +5,15 @@
 ################################################################################
 
 from fastapi import APIRouter
-# We are importing the versioned routers to ensure data integrity
-from app.api.v1 import forex, tasks
+from app.api.v1 import forex, tasks, ai as v1_ai
 
 # THE FIX: We are finally inviting orbit_ai to the party so it stops giving 404s 🚀
 from app.routers import med_scholar, orbit_ai, terminal_pilot
 
 api_router = APIRouter()
+
+# Mount the Central AI Operations (Phase 3 Core) 🧠
+api_router.include_router(v1_ai.router)
 
 # Mount the Forex Guardian 📈
 api_router.include_router(forex.router, prefix="/forex", tags=["Risk Management"])

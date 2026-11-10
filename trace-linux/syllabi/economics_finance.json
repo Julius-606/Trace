@@ -1,0 +1,35 @@
+{
+  "course_id": "econ_core_2026",
+  "course_title": "Economics, Markets & Algorithmic Finance",
+  "discipline": "Business & Economics",
+  "units": [
+    {
+      "unit_id": "FIN301",
+      "unit_title": "Quantitative Risk & Portfolio Allocation",
+      "cost_neurons": 20,
+      "description": "Value-at-Risk (VaR), Sharpe ratios, position sizing, and automated algorithmic execution limits.",
+      "modules": [
+        {
+          "module_id": "FIN301-M1",
+          "module_title": "Risk Mitigation & Drawdown Controls",
+          "topics": [
+            {
+              "topic_id": "FIN301-M1-T1",
+              "topic_title": "Position Sizing & Kelly Criterion",
+              "subtopics": [
+                {
+                  "subtopic_id": "FIN301-M1-T1-S1",
+                  "subtopic_title": "Mathematical Expectancy and Stop-Loss Enforcement",
+                  "objectives": [
+                    "Calculate fractional Kelly leverage limits",
+                    "Implement hard drawdown circuit breakers"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

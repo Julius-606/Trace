@@ -91,16 +91,37 @@ class SendOtpRequest(BaseModel):
     email: str
     action: str = "signup"  # "signup" or "forgot_password"
 
+class RequestOtpRequest(BaseModel):
+    email: str
+    action: str = "signup"  # "signup" or "forgot_password"
+
 class SendOtpResponse(BaseModel):
     status: str
     message: str
     email: str
+    otp_preview: Optional[str] = None
+    expires_in_seconds: int = 600
+    resend_cooldown_seconds: int = 60
+
+class RequestOtpResponse(BaseModel):
+    status: str
+    message: str
+    email: str
+    expires_in_seconds: int = 600
+    resend_cooldown_seconds: int = 60
     otp_preview: Optional[str] = None
 
 class VerifyOtpRequest(BaseModel):
     email: str
     otp: str
     action: str = "signup"
+
+class VerifyOtpResponse(BaseModel):
+    status: str
+    message: str
+    token: Optional[str] = None
+    email: Optional[str] = None
+    expires_in: Optional[int] = None
 
 class ForgotPasswordResetRequest(BaseModel):
     email: str

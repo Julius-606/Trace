@@ -443,27 +443,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChange={(e) => setSemesterStatus(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 outline-none"
                   >
-                    <option value="Year 1 - Pre-Clinical">Year 1 - Pre-Clinical</option>
-                    <option value="Year 2 - Foundations">Year 2 - Foundations</option>
-                    <option value="Year 3 - Core Clerkships">Year 3 - Core Clerkships</option>
-                    <option value="Year 4 - Clinical Rotations">Year 4 - Clinical Rotations</option>
-                    <option value="Postgraduate / Residency">Postgraduate / Residency</option>
+                    <option value="Year 1 - Foundational Studies">Year 1 - Foundational Studies</option>
+                    <option value="Year 2 - Core Disciplines">Year 2 - Core Disciplines</option>
+                    <option value="Year 3 - Advanced Theory & Practicum">Year 3 - Advanced Theory & Practicum</option>
+                    <option value="Year 4 - Professional Practice & Capstone">Year 4 - Professional Practice & Capstone</option>
+                    <option value="Postgraduate / Research & Fellowship">Postgraduate / Research & Fellowship</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                    Diagnostic Pace & Difficulty
+                    Study Pace & Examination Level
                   </label>
                   <select
                     value={difficulty}
                     onChange={(e) => setDifficulty(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 outline-none"
                   >
-                    <option value="Standard">Standard Pace</option>
-                    <option value="High-Yield Pearls">High-Yield Pearls Only</option>
-                    <option value="Board Exam Prep">Board Exam Prep (USMLE/NCLEX/PLAB)</option>
-                    <option value="Superuser">Advanced Research Mode</option>
+                    <option value="Standard">Standard Academic Pace</option>
+                    <option value="High-Yield Concepts">High-Yield Concepts & Takeaways</option>
+                    <option value="Professional Licensing Prep">Professional Licensing & Board Prep</option>
+                    <option value="Superuser">Advanced Honors & Research Mode</option>
                   </select>
                 </div>
               </div>

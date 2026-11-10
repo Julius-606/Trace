@@ -107,11 +107,11 @@ export const AccountModal: React.FC<AccountModalProps> = ({ user, onClose, onSav
                 onChange={(e) => setSemesterStatus(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 outline-none"
               >
-                <option value="Year 1 - Pre-Clinical">Year 1 - Pre-Clinical</option>
-                <option value="Year 2 - Foundations">Year 2 - Foundations</option>
-                <option value="Year 3 - Core Clerkships">Year 3 - Core Clerkships</option>
-                <option value="Year 4 - Clinical Rotations">Year 4 - Clinical Rotations</option>
-                <option value="Postgraduate / Residency">Postgraduate / Residency</option>
+                <option value="Year 1 - Foundational Studies">Year 1 - Foundational Studies</option>
+                <option value="Year 2 - Core Disciplines">Year 2 - Core Disciplines</option>
+                <option value="Year 3 - Advanced Theory & Practicum">Year 3 - Advanced Theory & Practicum</option>
+                <option value="Year 4 - Professional Practice & Capstone">Year 4 - Professional Practice & Capstone</option>
+                <option value="Postgraduate / Research & Fellowship">Postgraduate / Research & Fellowship</option>
               </select>
             </div>
 
@@ -126,7 +126,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ user, onClose, onSav
               >
                 <option value="Standard (Foundational)">Standard (Foundational)</option>
                 <option value="Medium (Standard)">Medium (Standard)</option>
-                <option value="Rigorous (Clinical Boards)">Rigorous (Clinical Boards)</option>
+                <option value="Rigorous (Professional & Licensing Boards)">Rigorous (Professional & Licensing Boards)</option>
                 <option value="Advanced (Honors / Mastery)">Advanced (Honors / Mastery)</option>
               </select>
             </div>
@@ -142,9 +142,9 @@ export const AccountModal: React.FC<AccountModalProps> = ({ user, onClose, onSav
               onChange={(e) => setAiPersona(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 outline-none"
             >
-              <option value="Socratic Tutor">Socratic Tutor (Guides through questioning)</option>
-              <option value="Clinical Attending">Clinical Attending (Bedside rounds rigor)</option>
-              <option value="Exam Drillmaster">Exam Drillmaster (High-yield board pearls)</option>
+              <option value="Socratic Tutor">Socratic Tutor (Guides through reasoning & discovery)</option>
+              <option value="Academic Mentor">Academic Mentor (Comprehensive faculty rigor)</option>
+              <option value="Exam Drillmaster">Exam Drillmaster (High-yield recall & key takeaways)</option>
               <option value="Feynman Explainer">Feynman Explainer (Radical intuition & analogies)</option>
             </select>
           </div>

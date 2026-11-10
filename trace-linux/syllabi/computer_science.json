@@ -1,0 +1,83 @@
+{
+  "course_id": "cs_core_2026",
+  "course_title": "Computer Science & Systems Architecture",
+  "discipline": "Engineering & Technology",
+  "units": [
+    {
+      "unit_id": "CS101",
+      "unit_title": "Distributed Systems & Cloud Ingestion",
+      "cost_neurons": 20,
+      "description": "Architecting resilient asynchronous processing pipelines, event streaming, and XDG-compliant storage engines.",
+      "modules": [
+        {
+          "module_id": "CS101-M1",
+          "module_title": "Asynchronous Event Pipelines & Celery/APScheduler",
+          "topics": [
+            {
+              "topic_id": "CS101-M1-T1",
+              "topic_title": "Non-blocking Worker Pools and Task Queues",
+              "subtopics": [
+                {
+                  "subtopic_id": "CS101-M1-T1-S1",
+                  "subtopic_title": "Event Queues, Idempotency, and Failure Isolation",
+                  "objectives": [
+                    "Design resilient background jobs without blocking request threads",
+                    "Handle backpressure and atomic state commits"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "module_id": "CS101-M2",
+          "module_title": "POSIX & XDG Base Directory Storage",
+          "topics": [
+            {
+              "topic_id": "CS101-M2-T1",
+              "topic_title": "Local Data Hierarchy on Unix Systems",
+              "subtopics": [
+                {
+                  "subtopic_id": "CS101-M2-T1-S1",
+                  "subtopic_title": "Data, Config, and Cache Isolation",
+                  "objectives": [
+                    "Isolate persistent state from runtime caches",
+                    "Implement SQLite WAL mode for high concurrency"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "unit_id": "CS102",
+      "unit_title": "Cryptographic Security & Identity Systems",
+      "cost_neurons": 20,
+      "description": "Cryptographically secure one-time tokens, PBKDF2 hashing at rest, and constant-time authentication.",
+      "modules": [
+        {
+          "module_id": "CS102-M1",
+          "module_title": "Entropy & Non-deterministic Generators",
+          "topics": [
+            {
+              "topic_id": "CS102-M1-T1",
+              "topic_title": "CSPRNG vs Pseudo-random Flaws",
+              "subtopics": [
+                {
+                  "subtopic_id": "CS102-M1-T1-S1",
+                  "subtopic_title": "Hardware Entropy and Secrets Module Internals",
+                  "objectives": [
+                    "Eliminate seed predictability in token generation",
+                    "Enforce strict expiration and replay prevention"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

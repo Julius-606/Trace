@@ -819,6 +819,18 @@ app.include_router(learning.router, prefix="/api")
 app.include_router(orbit_api_router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api")
 
+# Direct root-level aliases for Email OTP Verification System
+@app.post("/api/request-otp", response_model=schemas.RequestOtpResponse, tags=["Authentication"])
+async def api_root_request_otp(request: schemas.RequestOtpRequest, db: Session = Depends(get_db)):
+    """Request a single-use cryptographically secure 6-digit OTP."""
+    return await auth.request_verification_otp(request, db)
+
+@app.post("/api/verify-otp", response_model=schemas.VerifyOtpResponse, tags=["Authentication"])
+async def api_root_verify_otp(request: schemas.VerifyOtpRequest, db: Session = Depends(get_db)):
+    """Verify an active OTP token with constant-time matching and brute-force mitigation."""
+    return await auth.verify_otp(request, db)
+
+
 
 # ==============================================================================
 # Web App Module (React Frontend Embedded Directly in FastAPI Backend)

@@ -69,9 +69,9 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
     var signUpOtp by remember { mutableStateOf("") }
     var signUpPassword by remember { mutableStateOf("") }
     var isSignUpPasswordVisible by remember { mutableStateOf(false) }
-    var signUpAge by remember { mutableStateOf("23") }
-    var signUpLevelOfStudy by remember { mutableStateOf("Year 4 - Senior Clerkship") }
-    var signUpCoursePursued by remember { mutableStateOf("MBChB - Medicine & Surgery") }
+    var signUpAge by remember { mutableStateOf("22") }
+    var signUpLevelOfStudy by remember { mutableStateOf("Year 4 - Advanced Candidate / Capstone") }
+    var signUpCoursePursued by remember { mutableStateOf("Computer Science & Engineering") }
     var signUpReferralCode by remember { mutableStateOf("") }
     var isLevelDropdownExpanded by remember { mutableStateOf(false) }
 
@@ -98,12 +98,12 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
 
     val levelsList = remember {
         listOf(
-            "Year 1 - Pre-Clinical",
-            "Year 2 - Basic Sciences",
-            "Year 3 - Junior Clerkship",
-            "Year 4 - Senior Clerkship",
+            "Year 1 - Foundational Studies",
+            "Year 2 - Core Disciplines",
+            "Year 3 - Advanced Theory & Practicum",
+            "Year 4 - Advanced Candidate / Capstone",
             "Year 5 - Final Year Candidate",
-            "Post-Graduate / Resident"
+            "Postgraduate / Research & Fellowship"
         )
     }
 
@@ -777,8 +777,8 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                         OutlinedTextField(
                             value = signUpCoursePursued,
                             onValueChange = { signUpCoursePursued = it },
-                            label = { Text("Course Pursued") },
-                            placeholder = { Text("e.g. MBChB, Pharmacy, Nursing, Computer Science") },
+                            label = { Text("Course / Discipline Pursued") },
+                            placeholder = { Text("e.g. Computer Science, Law, Economics, Engineering, Medicine") },
                             leadingIcon = {
                                 Icon(Icons.Default.School, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                             },
