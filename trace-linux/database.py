@@ -190,16 +190,65 @@ def init_database() -> None:
             );
         """)
 
-        # 10. bookmarks table (Saved references and notes)
+        # 10. bookmarks table (Saved academic clips, highlights and references)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS bookmarks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 target TEXT,
-                category TEXT DEFAULT 'general',
+                category TEXT DEFAULT 'Syllabus',
                 notes TEXT,
+                snippet TEXT,
+                type TEXT DEFAULT 'learn',
+                unit_id TEXT,
+                subtopic_id TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+
+        # 11. text_highlights table (Colored text highlights in learning reader)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS text_highlights (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subtopic_id TEXT NOT NULL,
+                text_snippet TEXT NOT NULL,
+                color TEXT NOT NULL DEFAULT '#fbbf24',
+                note TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # 12. completed_subtopics table (Tracks completed topics/subtopics)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS completed_subtopics (
+                subtopic_id TEXT PRIMARY KEY,
+                unit_id TEXT,
+                completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # 13. user_preferences table (Key-value store for themes, haptics, ai persona)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # Safe schema column migrations for pre-existing databases
+        cursor.execute("PRAGMA table_info(bookmarks);")
+        b_cols = {row["name"] for row in cursor.fetchall()}
+        for col_name, col_def in [
+            ("snippet", "TEXT"),
+            ("type", "TEXT DEFAULT 'learn'"),
+            ("unit_id", "TEXT"),
+            ("subtopic_id", "TEXT")
+        ]:
+            if col_name not in b_cols:
+                try:
+                    cursor.execute(f"ALTER TABLE bookmarks ADD COLUMN {col_name} {col_def};")
+                except Exception:
+                    pass
 
     logger.info(f"TRACE database schema successfully initialized at {DATABASE_FILE}")
