@@ -1,40 +1,165 @@
-/* TRACE Desktop (Linux Client) - XFCE / Developer-First Dark Theme */
+/* ==============================================================================
+   TRACE Desktop (Linux Client) - Material 3 Dark Slate Design System
+   Mirrors: com.example.edu_ai.ui.theme (NeonIndigo #6366F1, DarkSlate #020617)
+   ============================================================================== */
 
 QMainWindow {
-    background-color: #090d16;
+    background-color: #020617;
+    color: #f8fafc;
 }
 
 QWidget {
     color: #f8fafc;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Liberation Sans", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Liberation Sans", "Ubuntu", sans-serif;
+    font-size: 13px;
+    selection-background-color: #6366f1;
+    selection-color: #ffffff;
 }
 
+/* --------------------------------------------------------------------------
+   Text Inputs (QLineEdit, QTextEdit) - High Contrast & Rounded Pill Styling
+   -------------------------------------------------------------------------- */
+QLineEdit {
+    background-color: #0b0f19;
+    border: 1.5px solid #334155;
+    border-radius: 12px;
+    color: #ffffff;
+    padding: 10px 14px;
+    font-size: 13px;
+    selection-background-color: #4f46e5;
+}
+
+QLineEdit:focus {
+    border: 1.5px solid #6366f1;
+    background-color: #0f172a;
+}
+
+QLineEdit:disabled {
+    background-color: #090d16;
+    color: #64748b;
+    border-color: #1e293b;
+}
+
+QTextEdit, QPlainTextEdit {
+    background-color: #0b0f19;
+    border: 1.5px solid #1e293b;
+    border-radius: 12px;
+    color: #f1f5f9;
+    padding: 12px;
+    font-size: 13px;
+}
+
+QTextEdit:focus, QPlainTextEdit:focus {
+    border-color: #6366f1;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons (QPushButton)
+   -------------------------------------------------------------------------- */
+QPushButton {
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 16px;
+    border: none;
+}
+
+QPushButton:disabled {
+    background-color: #1e293b;
+    color: #64748b;
+}
+
+/* --------------------------------------------------------------------------
+   Cards and Frames
+   -------------------------------------------------------------------------- */
+QFrame#cardFrame, QFrame#surfaceCard {
+    background-color: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   Scrollbars
+   -------------------------------------------------------------------------- */
 QScrollBar:vertical {
     border: none;
-    background: #0b0f19;
+    background: #020617;
     width: 8px;
-    margin: 0px 0px 0px 0px;
+    margin: 0px;
     border-radius: 4px;
 }
 
 QScrollBar::handle:vertical {
     background: #334155;
-    min-height: 20px;
+    min-height: 24px;
     border-radius: 4px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: #475569;
+    background: #6366f1;
 }
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
 }
 
+QScrollBar:horizontal {
+    border: none;
+    background: #020617;
+    height: 8px;
+    margin: 0px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #334155;
+    min-width: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #6366f1;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+/* --------------------------------------------------------------------------
+   Tooltips & Dialogs
+   -------------------------------------------------------------------------- */
 QToolTip {
     background-color: #1e293b;
     color: #ffffff;
     border: 1px solid #475569;
-    padding: 6px;
-    border-radius: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+QDialog {
+    background-color: #020617;
+    color: #f8fafc;
+}
+
+QMessageBox {
+    background-color: #0f172a;
+    color: #f8fafc;
+}
+
+QMessageBox QLabel {
+    color: #f8fafc;
+    font-size: 13px;
+}
+
+QMessageBox QPushButton {
+    background-color: #4f46e5;
+    color: #ffffff;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+QMessageBox QPushButton:hover {
+    background-color: #4338ca;
 }

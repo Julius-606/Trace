@@ -1,10 +1,11 @@
 """
 TRACE Desktop (Linux Client) - Main Window & Dashboard Shell
 FILE: trace-linux/ui/main_window.py
-VERSION: 1.1.0
-ROLE: Primary PyQt6/PySide6 desktop window manager featuring sidebar navigation,
-      live Neurons wallet integration, cloud synchronization button, user profile chip,
-      syllabus browsing, and AI Socratic links.
+VERSION: 1.2.0
+ROLE: Primary PyQt6/PySide6 desktop window manager featuring an embedded
+      Material 3 LoginScreen, sidebar navigation, live Neurons wallet integration,
+      cloud synchronization button, user profile chip, syllabus browsing,
+      and AI Socratic links.
 """
 
 import sys
@@ -23,43 +24,74 @@ except ImportError:
         QLineEdit, QTextEdit, QMessageBox, QApplication
     )
     from PySide6.QtCore import Qt, QSize
-    from PySide6.QtGui import QIcon, QFont
+    from PySide6.QtGui import QFont, QIcon
 
 from repository import TraceRepository
 from ui.wallet_widget import WalletBadgeWidget
 from ui.syllabus_view import SyllabusView
 from ui.assessment_view import AssessmentView
-from ui.login_dialog import LoginDialog
+from ui.login_screen import LoginScreen
 from config import APP_DISPLAY_NAME, APP_VERSION, DATABASE_FILE, DEFAULT_BACKEND_URL
 
 
 class MainWindow(QMainWindow):
     """
     Main application desktop window for TRACE Desktop (Linux Client).
+    Features root screen switching between the full Material 3 LoginScreen
+    and the authenticated Student Workstation.
     """
 
     def __init__(self, session: dict = None):
         super().__init__()
-        self.session = session or TraceRepository.get_active_session() or {}
+        self.session = session or TraceRepository.get_active_session()
         self.setWindowTitle(f"{APP_DISPLAY_NAME} v{APP_VERSION} (Linux Workstation)")
         self.resize(1180, 780)
-        self.setMinimumSize(920, 600)
+        self.setMinimumSize(960, 640)
         self.init_ui()
 
     def init_ui(self):
-        # Central Container
+        # Central Root Stack: Index 0 = LoginScreen, Index 1 = Workspace
         central_widget = QWidget(self)
         central_widget.setObjectName("centralWidget")
         self.setCentralWidget(central_widget)
 
-        root_layout = QHBoxLayout(central_widget)
+        self.root_stack_layout = QVBoxLayout(central_widget)
+        self.root_stack_layout.setContentsMargins(0, 0, 0, 0)
+        self.root_stack_layout.setSpacing(0)
+
+        self.root_stack = QStackedWidget(central_widget)
+        self.root_stack_layout.addWidget(self.root_stack)
+
+        # ----------------------------------------------------------------------
+        # PAGE 0: FULL-WINDOW MATERIAL 3 LOGIN SCREEN (Matches Android LoginScreen)
+        # ----------------------------------------------------------------------
+        self.login_screen = LoginScreen(self)
+        self.login_screen.loginSuccessful.connect(self.on_login_completed)
+        self.root_stack.addWidget(self.login_screen)
+
+        # ----------------------------------------------------------------------
+        # PAGE 1: AUTHENTICATED WORKSPACE (Sidebar + Header + Main Stack)
+        # ----------------------------------------------------------------------
+        self.workspace_widget = self.create_workspace_widget()
+        self.root_stack.addWidget(self.workspace_widget)
+
+        # Initial Route Decision
+        if self.session and self.session.get("is_logged_in"):
+            self.root_stack.setCurrentIndex(1)
+            self.refresh_dashboard_metrics()
+        else:
+            self.root_stack.setCurrentIndex(0)
+
+    def create_workspace_widget(self) -> QWidget:
+        workspace = QWidget(self)
+        root_layout = QHBoxLayout(workspace)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
         # ----------------------------------------------------------------------
-        # 1. LEFT SIDEBAR NAVIGATION
+        # 1. LEFT SIDEBAR NAVIGATION (Matching Android Navigation Drawer)
         # ----------------------------------------------------------------------
-        sidebar = QFrame(self)
+        sidebar = QFrame(workspace)
         sidebar.setObjectName("sidebar")
         sidebar.setFixedWidth(240)
         sidebar.setStyleSheet("""
@@ -93,11 +125,11 @@ class MainWindow(QMainWindow):
         env_label.setStyleSheet("font-size: 10px; color: #64748b; margin-bottom: 12px;")
         sidebar_layout.addWidget(env_label)
 
-        # Navigation Buttons
+        # Navigation Buttons (Avoiding bare '&' which creates accelerator mnemonic '_')
         self.nav_buttons = {}
         nav_items = [
             ("dashboard", "📊  Dashboard Overview"),
-            ("syllabi", "📚  Syllabus & Units"),
+            ("syllabi", "📚  Syllabus and Units"),
             ("assessment", "🎯  Assessment Center"),
             ("ai_terminal", "🧠  Orbit AI Terminal"),
             ("tasks", "📋  Study Tasks"),
@@ -134,7 +166,7 @@ class MainWindow(QMainWindow):
 
         sidebar_layout.addStretch()
 
-        # Database File Indicator
+        # Local Database File Indicator
         db_box = QFrame(sidebar)
         db_box.setStyleSheet("background-color: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 8px;")
         db_box_layout = QVBoxLayout(db_box)
@@ -151,7 +183,7 @@ class MainWindow(QMainWindow):
         # ----------------------------------------------------------------------
         # 2. MAIN CONTENT STACK & TOP HEADER
         # ----------------------------------------------------------------------
-        content_container = QWidget(self)
+        content_container = QWidget(workspace)
         content_layout = QVBoxLayout(content_container)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
@@ -193,6 +225,7 @@ class MainWindow(QMainWindow):
 
         # Live Neurons Badge Widget
         self.wallet_badge = WalletBadgeWidget(top_bar)
+        self.wallet_badge.balanceChanged.connect(lambda b: self.refresh_dashboard_metrics())
         top_bar_layout.addWidget(self.wallet_badge)
 
         # User Profile Chip & Logout Button
@@ -218,7 +251,7 @@ class MainWindow(QMainWindow):
         profile_layout.addWidget(self.role_badge)
 
         self.btn_logout = QPushButton("🚪", self.profile_chip)
-        self.btn_logout.setToolTip("Switch User / Logout")
+        self.btn_logout.setToolTip("Sign Out / Switch User")
         self.btn_logout.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -232,7 +265,6 @@ class MainWindow(QMainWindow):
         profile_layout.addWidget(self.btn_logout)
 
         top_bar_layout.addWidget(self.profile_chip)
-
         content_layout.addWidget(top_bar)
 
         # Main Stacked Pages
@@ -265,8 +297,8 @@ class MainWindow(QMainWindow):
         content_layout.addWidget(self.stack)
         root_layout.addWidget(content_container)
 
-        # Set default page to Dashboard
         self.nav_buttons["dashboard"].setChecked(True)
+        return workspace
 
     def get_display_username(self) -> str:
         s = self.session or TraceRepository.get_active_session() or {}
@@ -276,13 +308,23 @@ class MainWindow(QMainWindow):
         s = self.session or TraceRepository.get_active_session() or {}
         return (s.get("role") or "Student").upper()
 
+    def on_login_completed(self, session: dict):
+        """Called when user successfully authenticates on the full-window LoginScreen."""
+        self.session = session
+        self.user_label.setText(self.get_display_username())
+        self.role_badge.setText(self.get_display_role())
+        self.wallet_badge.refresh_balance()
+        self.page_syllabi.load_syllabi_from_disk()
+        self.refresh_dashboard_metrics()
+        self.root_stack.setCurrentIndex(1)
+
     def navigate_to(self, nav_id: str):
         mapping = {
             "dashboard": (0, "Dashboard Overview"),
-            "syllabi": (1, "Course Syllabi & Curriculum Vault"),
+            "syllabi": (1, "Course Syllabi and Curriculum Vault"),
             "assessment": (2, "Assessment Center: Active Recall"),
             "ai_terminal": (3, "Orbit AI Socratic Terminal"),
-            "tasks": (4, "Study Tasks & Schedule"),
+            "tasks": (4, "Study Tasks and Schedule"),
         }
         if nav_id in mapping:
             idx, title = mapping[nav_id]
@@ -310,7 +352,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Offline Mode", f"⚠️ {msg}")
 
     def handle_logout(self):
-        """Logs out current user, opens LoginDialog, and rebinds session."""
+        """Logs out current user and switches back to the full-window LoginScreen."""
         confirm = QMessageBox.question(
             self,
             "Sign Out",
@@ -319,19 +361,9 @@ class MainWindow(QMainWindow):
         )
         if confirm == QMessageBox.StandardButton.Yes:
             TraceRepository.logout()
-            login = LoginDialog(self)
-            if login.exec() == LoginDialog.DialogCode.Accepted and login.user_session:
-                self.session = login.user_session
-                self.user_label.setText(self.get_display_username())
-                self.role_badge.setText(self.get_display_role())
-                self.wallet_badge.refresh_balance()
-                self.page_syllabi.load_syllabi_from_disk()
-                self.refresh_dashboard_metrics()
-            else:
-                # Re-fetch active session or exit
-                self.session = TraceRepository.get_active_session() or {}
-                self.user_label.setText(self.get_display_username())
-                self.role_badge.setText(self.get_display_role())
+            self.session = None
+            self.root_stack.setCurrentIndex(0)
+            self.login_screen.switch_to_signin_mode()
 
     def on_unit_unlocked(self, unit_id: str):
         self.wallet_badge.refresh_balance()
@@ -403,7 +435,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(actions_label)
 
         action_btns = QHBoxLayout()
-        btn_open_syllabi = QPushButton("📚 Browse & Unlock Syllabi", page)
+        btn_open_syllabi = QPushButton("📚 Browse and Unlock Syllabi", page)
         btn_open_syllabi.setStyleSheet("""
             QPushButton {
                 background-color: #4f46e5;
@@ -483,7 +515,7 @@ class MainWindow(QMainWindow):
         return card
 
     # ==========================================================================
-    # AI TERMINAL PAGE GENERATOR (WITH LOCAL OFFLINE STAGING)
+    # AI TERMINAL PAGE GENERATOR (WITH REAL BACKEND ROUTING)
     # ==========================================================================
     def create_ai_terminal_page(self) -> QWidget:
         page = QWidget()
@@ -558,7 +590,7 @@ class MainWindow(QMainWindow):
         self.chat_input.clear()
         QApplication.processEvents()
 
-        user_id = str(self.session.get("user_id", "1"))
+        user_id = str((self.session or {}).get("user_id", "1"))
         reply = TraceRepository.send_ai_chat(text, user_id=user_id)
         self.chat_history.append(f"\n🧠 Orbit AI: {reply}\n")
 
@@ -571,7 +603,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        header = QLabel("📋 Chronotype Task & Study Planner", page)
+        header = QLabel("📋 Chronotype Task and Study Planner", page)
         header.setStyleSheet("font-size: 18px; font-weight: 800; color: #ffffff;")
         layout.addWidget(header)
 
@@ -610,7 +642,7 @@ class MainWindow(QMainWindow):
         self.task_list.clear()
         tasks = TraceRepository.get_study_tasks()
         if not tasks:
-            TraceRepository.add_study_task("Review Distributed Systems & Ingestion", "Computer Science")
+            TraceRepository.add_study_task("Review Distributed Systems and Ingestion", "Computer Science")
             TraceRepository.add_study_task("Run Active Recall Assessment on CS101", "Assessments")
             tasks = TraceRepository.get_study_tasks()
 

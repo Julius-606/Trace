@@ -69,25 +69,17 @@ def main():
 
     # 5. Check Active User Session
     active_session = TraceRepository.get_active_session()
+    if active_session and active_session.get("is_logged_in"):
+        print(f"[+] Active session found for user '{active_session.get('username')}'. Launching Workstation...")
+    else:
+        print("[*] No active session found. Presenting Full-Window LoginScreen...")
 
-    if not active_session:
-        # Prompt user with Login Dialog
-        print("[*] No active session found. Presenting Authentication Dialog...")
-        login_dlg = LoginDialog()
-        result = login_dlg.exec()
-        if result == LoginDialog.DialogCode.Accepted and login_dlg.user_session:
-            active_session = login_dlg.user_session
-        else:
-            # Automatic fallback to local offline student profile for convenience
-            print("[*] Authentication bypassed. Initializing offline student session...")
-            TraceRepository.login("student", "offline")
-            active_session = TraceRepository.get_active_session()
-
-    # 6. Launch Main Window
+    # 6. Launch Main Window (contains embedded full-window Material 3 LoginScreen)
     window = MainWindow(session=active_session)
     window.show()
 
-    print(f"[+] TRACE Desktop client successfully running. Active user: {active_session.get('username') if active_session else 'Anonymous'}")
+    user_repr = active_session.get("username") if (active_session and active_session.get("is_logged_in")) else "Guest / Pending Auth"
+    print(f"[+] TRACE Desktop client successfully running. Initial state: {user_repr}")
     sys.exit(app.exec())
 
 
