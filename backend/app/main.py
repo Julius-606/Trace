@@ -1237,6 +1237,7 @@ def delete_bookmark(user_id: str, bookmark_id: int, db: Session = Depends(get_db
     return {"status": "success", "message": "Bookmark deleted"}
 
 @app.get("/api/user/{user_id}/sync")
+@app.get("/api/users/{user_id}/sync")
 def get_user_sync_data(user_id: str, db: Session = Depends(get_db)):
     user = find_user(user_id, db)
     if not user:
@@ -1245,6 +1246,7 @@ def get_user_sync_data(user_id: str, db: Session = Depends(get_db)):
     return sync_manager.get_full_sync_data(db, user)
 
 @app.post("/api/user/{user_id}/sync", response_model=schemas.SyncResponse)
+@app.post("/api/users/{user_id}/sync", response_model=schemas.SyncResponse)
 def sync_user_data(user_id: str, payload: schemas.SyncRequest, db: Session = Depends(get_db)):
     user = find_user(user_id, db)
     if not user:

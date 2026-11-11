@@ -23,7 +23,9 @@ def fetch_user_profile(db: Session, user: models.User) -> Dict[str, Any]:
             "semesterStatus": getattr(user, "semester_status", "Active Session") or "Active Session",
             "aiPersona": getattr(user, "ai_persona", "Academic Mentor") or "Academic Mentor",
             "sensoryMode": getattr(user, "sensory_mode", "Visual") or "Visual",
-            "activeUnits": active_units
+            "activeUnits": active_units,
+            "traceCoins": user.trace_coins if getattr(user, "trace_coins", None) is not None else 200,
+            "trace_coins": user.trace_coins if getattr(user, "trace_coins", None) is not None else 200
         }
     except Exception as err:
         logger.error(f"Error serializing user profile for {user.id}: {err}")
@@ -31,7 +33,9 @@ def fetch_user_profile(db: Session, user: models.User) -> Dict[str, Any]:
             "id": str(user.id),
             "username": user.username,
             "email": user.email,
-            "role": user.role
+            "role": user.role,
+            "traceCoins": getattr(user, "trace_coins", 200) or 200,
+            "trace_coins": getattr(user, "trace_coins", 200) or 200
         }
 
 def sync_user_profile(db: Session, user: models.User, payload: Any) -> Dict[str, Any]:

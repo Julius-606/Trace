@@ -323,6 +323,9 @@ class SyllabusProgressItem(BaseModel):
 class SyncRequest(BaseModel):
     progress: List[SyllabusProgressItem] = []
     bookmarks: List[BookmarkBase] = []
+    quizzes: List[Dict[str, Any]] = []
+    chats: List[Dict[str, Any]] = []
+    user: Optional[Dict[str, Any]] = None
 
 class SyncResponse(BaseModel):
     success: bool = True

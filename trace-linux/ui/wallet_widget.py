@@ -73,9 +73,13 @@ class WalletBadgeWidget(QFrame):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            dialog = WalletModalDialog(self)
-            dialog.walletUpdated.connect(self.refresh_balance)
-            dialog.exec()
+            self.open_top_up_dialog()
+
+    def open_top_up_dialog(self):
+        """Opens the Neurons currency and top-up modal dialog."""
+        dialog = WalletModalDialog(self)
+        dialog.walletUpdated.connect(self.refresh_balance)
+        dialog.exec()
 
     def refresh_balance(self):
         balance = TraceRepository.get_wallet_balance()

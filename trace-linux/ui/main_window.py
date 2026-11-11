@@ -556,18 +556,11 @@ class MainWindow(QMainWindow):
 
         self.chat_history.append(f"\n👤 You: {text}")
         self.chat_input.clear()
+        QApplication.processEvents()
 
-        # Thin client routing: Stage in local SQLite first
-        prompt_id = TraceRepository.stage_offline_prompt(text, "Linux Client")
-
-        # Attempt immediate local Socratic reply or simulated backend response
-        reply = (
-            f"🧠 Orbit AI: Analyzed inquiry regarding '{text}'.\n"
-            "Key High-Yield Principle: Break the system into foundational axioms first, "
-            "then test your recall boundaries with an active assessment drill in the syllabus view."
-        )
-        self.chat_history.append(f"\n{reply}\n")
-        TraceRepository.mark_prompt_synced(prompt_id, reply)
+        user_id = str(self.session.get("user_id", "1"))
+        reply = TraceRepository.send_ai_chat(text, user_id=user_id)
+        self.chat_history.append(f"\n🧠 Orbit AI: {reply}\n")
 
     # ==========================================================================
     # STUDY TASKS PAGE GENERATOR
