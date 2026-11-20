@@ -63,10 +63,10 @@ export const BookmarksScreen: React.FC<BookmarksScreenProps> = ({
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
               <BookmarkIcon className="w-4 h-4 fill-current" />
             </div>
-            <h1 className="text-xl font-bold text-white">Study Bookmarks & High-Yield Clips</h1>
+            <h1 className="text-xl font-bold text-white">Saved Bookmarks & Clips</h1>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Access and review your saved learning points, consultation transcripts, and references.
+            Access and review your saved syllabus points, consultation transcripts, and browser references.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export const BookmarksScreen: React.FC<BookmarksScreenProps> = ({
               }`}
             >
               {filter === 'all'
-                ? 'All Items'
+                ? 'All Clips'
                 : filter === 'learn'
                 ? 'Syllabus Points'
                 : filter === 'browser'

@@ -58,6 +58,7 @@ edu_ai_vault.db
 .DS_Store
 Thumbs.db
 
+
 # Logs and temporary files
 *.log
 logs.txt
@@ -68,3 +69,7 @@ logs.txt
 
 gradle.properties
 *.hprof
+Trace_backend_SNAPSHOT.txt
+./data
+vault.db
+orbit_vault.db

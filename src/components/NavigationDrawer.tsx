@@ -108,7 +108,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
 
           <button
             onClick={() => {
-              onSelectTab('consultations');
+              onSelectTab('socratic');
               onClose();
             }}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 hover:text-indigo-300 transition-colors"
@@ -119,13 +119,13 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
 
           <button
             onClick={() => {
-              onSelectTab('quizzes');
+              onSelectTab('assessment');
               onClose();
             }}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 hover:text-indigo-300 transition-colors"
           >
             <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>Knowledge Retrieval (Quizzes)</span>
+            <span>Assessment Center</span>
           </button>
 
           <button
@@ -147,7 +147,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 hover:text-indigo-300 transition-colors"
           >
             <Users className="w-4 h-4 text-sky-400" />
-            <span>Study Connect</span>
+            <span>Study Connect &amp; Peers</span>
           </button>
 
           <button
@@ -158,7 +158,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 hover:text-indigo-300 transition-colors"
           >
             <BookmarkIcon className="w-4 h-4 text-amber-400" />
-            <span>Saved Bookmarks & Clips</span>
+            <span>Saved Highlights</span>
           </button>
 
           <button
@@ -236,7 +236,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 hover:text-indigo-300 transition-colors"
           >
             <Settings className="w-4 h-4 text-slate-400" />
-            <span>Settings & Sync</span>
+            <span>Settings &amp; Version</span>
           </button>
 
           {/* Role Switcher */}

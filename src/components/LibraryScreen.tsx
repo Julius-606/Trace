@@ -52,10 +52,10 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
           </button>
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-              Curriculum Catalog
+              Add Unit to Syllabus
             </span>
-            <h1 className="text-2xl font-black text-white mt-0.5">Discipline & Unit Library</h1>
-            <p className="text-xs text-slate-400">Explore and enroll in medical syllabus programs</p>
+            <h1 className="text-2xl font-black text-white mt-0.5">Add Unit to Syllabus</h1>
+            <p className="text-xs text-slate-400">Authentic curriculum courses offered on Trace Backend</p>
           </div>
         </div>
 

@@ -1,8 +1,24 @@
 @import "tailwindcss";
 
+:root {
+  --trace-neon-blue: #00e5ff;
+  --trace-neon-indigo: #6366f1;
+  --trace-dark-slate: #020617;
+  --trace-slate-card: #0f172a;
+  --trace-slate-card-light: #1e293b;
+}
+
 @layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background: var(--trace-dark-slate);
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    color: #f8fafc;
   }
 
   code, pre {

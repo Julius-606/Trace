@@ -240,10 +240,10 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
       <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-            Knowledge Retrieval Engine
+            Knowledge Retrieval Center
           </span>
-          <h1 className="text-2xl font-black text-white mt-0.5">High-Yield Clinical Assessment</h1>
-          <p className="text-xs text-slate-400">PnL scoring with deep clinical rationales</p>
+          <h1 className="text-2xl font-black text-white mt-0.5">Knowledge Retrieval Center</h1>
+          <p className="text-xs text-slate-400">Select a syllabus unit or subtopic, then test and review your recall.</p>
         </div>
 
         {/* Unit & AI Quiz Selector Controls */}

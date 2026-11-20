@@ -50,7 +50,7 @@ class SyllabusView(QWidget):
 
         # Header bar
         header_layout = QHBoxLayout()
-        header_title = QLabel("📚 Course Syllabi & Curriculum Vault", self)
+        header_title = QLabel("📚 Add Unit to Syllabus", self)
         header_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #ffffff;")
         header_layout.addWidget(header_title)
 
@@ -83,7 +83,7 @@ class SyllabusView(QWidget):
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 10, 0)
 
-        left_label = QLabel("DISCIPLINES & UNITS", left_widget)
+        left_label = QLabel("AUTHENTIC CURRICULUM COURSES", left_widget)
         left_label.setStyleSheet("font-size: 11px; font-weight: bold; color: #64748b; letter-spacing: 1px;")
         left_layout.addWidget(left_label)
 

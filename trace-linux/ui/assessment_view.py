@@ -117,7 +117,7 @@ class AssessmentView(QWidget):
 
         # Header bar
         header_row = QHBoxLayout()
-        self.title_label = QLabel("🎯 Assessment Center: Active Recall Drill", self)
+        self.title_label = QLabel("🎯 Knowledge Retrieval Center", self)
         self.title_label.setStyleSheet("font-size: 18px; font-weight: 800; color: #ffffff;")
         header_row.addWidget(self.title_label)
 

@@ -13,7 +13,7 @@ try:
     from PyQt6.QtWidgets import (
         QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton,
         QLabel, QStackedWidget, QFrame, QListWidget, QListWidgetItem,
-        QLineEdit, QTextEdit, QMessageBox, QApplication
+        QLineEdit, QTextEdit, QMessageBox, QApplication, QProgressBar
     )
     from PyQt6.QtCore import Qt, QSize
     from PyQt6.QtGui import QIcon, QFont
@@ -21,7 +21,7 @@ except ImportError:
     from PySide6.QtWidgets import (
         QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton,
         QLabel, QStackedWidget, QFrame, QListWidget, QListWidgetItem,
-        QLineEdit, QTextEdit, QMessageBox, QApplication
+        QLineEdit, QTextEdit, QMessageBox, QApplication, QProgressBar
     )
     from PySide6.QtCore import Qt, QSize
     from PySide6.QtGui import QFont, QIcon
@@ -30,6 +30,8 @@ from repository import TraceRepository
 from ui.wallet_widget import WalletBadgeWidget
 from ui.syllabus_view import SyllabusView
 from ui.assessment_view import AssessmentView
+from ui.learn_view import LearnView
+from ui.bookmarks_view import BookmarksView
 from ui.login_screen import LoginScreen
 from config import APP_DISPLAY_NAME, APP_VERSION, DATABASE_FILE, DEFAULT_BACKEND_URL
 
@@ -93,7 +95,7 @@ class MainWindow(QMainWindow):
         # ----------------------------------------------------------------------
         sidebar = QFrame(workspace)
         sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(240)
+        sidebar.setFixedWidth(280)
         sidebar.setStyleSheet("""
             QFrame#sidebar {
                 background-color: #0b0f19;
@@ -110,29 +112,31 @@ class MainWindow(QMainWindow):
         logo_icon.setStyleSheet("font-size: 20px;")
         brand_layout.addWidget(logo_icon)
 
-        brand_text = QLabel("TRACE", sidebar)
-        brand_text.setStyleSheet("font-size: 18px; font-weight: 900; letter-spacing: 2px; color: #6366f1;")
+        brand_text = QLabel("Trace Learning", sidebar)
+        brand_text.setStyleSheet("font-size: 19px; font-weight: 900; color: #f8fafc;")
         brand_layout.addWidget(brand_text)
 
-        badge_sub = QLabel("DESKTOP", sidebar)
+        badge_sub = QLabel("LINUX", sidebar)
         badge_sub.setStyleSheet("font-size: 9px; font-weight: bold; background: #312e81; color: #a5b4fc; padding: 2px 6px; border-radius: 4px;")
         brand_layout.addWidget(badge_sub)
         brand_layout.addStretch()
 
         sidebar_layout.addLayout(brand_layout)
 
-        env_label = QLabel("Linux XFCE / XDG Architecture", sidebar)
-        env_label.setStyleSheet("font-size: 10px; color: #64748b; margin-bottom: 12px;")
+        env_label = QLabel("Learning trail", sidebar)
+        env_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;")
         sidebar_layout.addWidget(env_label)
 
         # Navigation Buttons (Avoiding bare '&' which creates accelerator mnemonic '_')
         self.nav_buttons = {}
         nav_items = [
-            ("dashboard", "📊  Dashboard Overview"),
-            ("syllabi", "📚  Syllabus and Units"),
-            ("assessment", "🎯  Assessment Center"),
-            ("ai_terminal", "🧠  Orbit AI Terminal"),
-            ("tasks", "📋  Study Tasks"),
+            ("dashboard", "⌂  Home Dashboard"),
+            ("socratic", "✦  Socratic Assistant"),
+            ("assessment", "◇  Assessment Center"),
+            ("connect", "♧  Study Connect & Peers"),
+            ("schedule", "◷  Dynamic Schedule"),
+            ("syllabi", "▣  Syllabus Library"),
+            ("bookmarks", "⚑  Saved Highlights"),
         ]
 
         for nav_id, label in nav_items:
@@ -143,8 +147,8 @@ class MainWindow(QMainWindow):
             btn.setStyleSheet("""
                 QPushButton#navButton {
                     text-align: left;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    padding: 12px 14px;
+                    border-radius: 12px;
                     font-size: 13px;
                     font-weight: 600;
                     color: #94a3b8;
@@ -155,8 +159,9 @@ class MainWindow(QMainWindow):
                     color: #f8fafc;
                 }
                 QPushButton#navButton:checked {
-                    background-color: #4f46e5;
-                    color: #ffffff;
+                    background-color: rgba(99, 102, 241, 0.22);
+                    border: 1px solid rgba(99, 102, 241, 0.45);
+                    color: #c7d2fe;
                     font-weight: 700;
                 }
             """)
@@ -165,6 +170,20 @@ class MainWindow(QMainWindow):
             self.nav_buttons[nav_id] = btn
 
         sidebar_layout.addStretch()
+
+        workspace_label = QLabel("Workspace", sidebar)
+        workspace_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px;")
+        sidebar_layout.addWidget(workspace_label)
+
+        self.settings_button = QPushButton("⚙  Settings & Version", sidebar)
+        self.settings_button.setObjectName("navButton")
+        self.settings_button.clicked.connect(lambda: self.navigate_to("settings"))
+        sidebar_layout.addWidget(self.settings_button)
+
+        account_button = QPushButton("●  Account Profile", sidebar)
+        account_button.setObjectName("navButton")
+        account_button.clicked.connect(lambda: self.navigate_to("settings"))
+        sidebar_layout.addWidget(account_button)
 
         # Local Database File Indicator
         db_box = QFrame(sidebar)
@@ -286,13 +305,32 @@ class MainWindow(QMainWindow):
         self.page_assessment.quizFinished.connect(lambda res: self.on_quiz_finished(res))
         self.stack.addWidget(self.page_assessment)
 
-        # Page 3: AI Terminal
+        # Page 3: Learn reader
+        self.page_learn = LearnView(self)
+        self.page_learn.requestAssessment.connect(self.launch_assessment_for_unit)
+        self.page_learn.progressUpdated.connect(self.refresh_dashboard_metrics)
+        self.stack.addWidget(self.page_learn)
+
+        # Page 4: Saved highlights
+        self.page_bookmarks = BookmarksView(self)
+        self.page_bookmarks.openReaderRequested.connect(self.open_bookmark_reader)
+        self.stack.addWidget(self.page_bookmarks)
+
+        # Page 5: Study connect
+        self.page_connect = self.create_connect_page()
+        self.stack.addWidget(self.page_connect)
+
+        # Page 6: AI Terminal
         self.page_ai_terminal = self.create_ai_terminal_page()
         self.stack.addWidget(self.page_ai_terminal)
 
-        # Page 4: Tasks
+        # Page 7: Dynamic schedule
         self.page_tasks = self.create_tasks_page()
         self.stack.addWidget(self.page_tasks)
+
+        # Page 8: Settings and version
+        self.page_settings = self.create_settings_page()
+        self.stack.addWidget(self.page_settings)
 
         content_layout.addWidget(self.stack)
         root_layout.addWidget(content_container)
@@ -321,10 +359,14 @@ class MainWindow(QMainWindow):
     def navigate_to(self, nav_id: str):
         mapping = {
             "dashboard": (0, "Dashboard Overview"),
-            "syllabi": (1, "Course Syllabi and Curriculum Vault"),
+            "socratic": (6, "Socratic Assistant"),
             "assessment": (2, "Assessment Center: Active Recall"),
-            "ai_terminal": (3, "Orbit AI Socratic Terminal"),
-            "tasks": (4, "Study Tasks and Schedule"),
+            "connect": (5, "Study Connect & Peers"),
+            "schedule": (7, "Dynamic Schedule"),
+            "syllabi": (1, "Syllabus Library"),
+            "bookmarks": (4, "Saved Highlights"),
+            "learn": (3, "Learn"),
+            "settings": (8, "Settings & Version"),
         }
         if nav_id in mapping:
             idx, title = mapping[nav_id]
@@ -378,6 +420,77 @@ class MainWindow(QMainWindow):
         self.nav_buttons["assessment"].setChecked(True)
         self.navigate_to("assessment")
 
+    def open_bookmark_reader(self, unit_id: str, subtopic_id: str):
+        """Return to the learning reader from a saved highlight."""
+        self.navigate_to("learn")
+        if hasattr(self.page_learn, "select_subtopic_by_id"):
+            self.page_learn.select_subtopic_by_id(subtopic_id)
+
+    def create_connect_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        title = QLabel("Study Connect & Peers", page)
+        title.setStyleSheet("font-size: 22px; font-weight: 900; color: #ffffff;")
+        layout.addWidget(title)
+        subtitle = QLabel("Share study momentum, compare progress, and prepare for your next assessment together.", page)
+        subtitle.setStyleSheet("font-size: 13px; color: #94a3b8;")
+        layout.addWidget(subtitle)
+
+        card = QFrame(page)
+        card.setStyleSheet("background-color: #0f172a; border: 1px solid #1e293b; border-radius: 16px;")
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(20, 20, 20, 20)
+        card_layout.addWidget(QLabel("Your study circle", card))
+        empty = QLabel("Peer discovery and shared study rooms will appear here when connected to the Trace service.", card)
+        empty.setWordWrap(True)
+        empty.setStyleSheet("font-size: 13px; color: #94a3b8;")
+        card_layout.addWidget(empty)
+        layout.addWidget(card)
+        layout.addStretch()
+        return page
+
+    def create_settings_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        title = QLabel("Settings & Version", page)
+        title.setStyleSheet("font-size: 22px; font-weight: 900; color: #ffffff;")
+        layout.addWidget(title)
+        subtitle = QLabel("Manage your Trace Learning workspace and offline sync preferences.", page)
+        subtitle.setStyleSheet("font-size: 13px; color: #94a3b8;")
+        layout.addWidget(subtitle)
+
+        for heading, value in (
+            ("Account", self.get_display_username()),
+            ("Learning mode", "Visual & Conceptual"),
+            ("AI tutor persona", "Socratic Mentor"),
+            ("Application version", APP_VERSION),
+            ("Local data", "SQLite offline vault enabled"),
+        ):
+            card = QFrame(page)
+            card.setStyleSheet("background-color: #0f172a; border: 1px solid #1e293b; border-radius: 14px;")
+            row = QHBoxLayout(card)
+            row.setContentsMargins(16, 14, 16, 14)
+            label = QLabel(heading, card)
+            label.setStyleSheet("font-size: 12px; color: #94a3b8; font-weight: bold;")
+            row.addWidget(label)
+            row.addStretch()
+            value_label = QLabel(value, card)
+            value_label.setStyleSheet("font-size: 13px; color: #e0e7ff; font-weight: bold;")
+            row.addWidget(value_label)
+            layout.addWidget(card)
+
+        sync_button = QPushButton("☁  Synchronize progress, bookmarks, and assessments", page)
+        sync_button.clicked.connect(self.trigger_cloud_sync)
+        layout.addWidget(sync_button)
+        layout.addStretch()
+        return page
+
     # ==========================================================================
     # DASHBOARD PAGE GENERATOR
     # ==========================================================================
@@ -387,7 +500,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(20)
 
-        # Hero Banner
+        # Android-style welcome header
         hero = QFrame(page)
         hero.setStyleSheet("""
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #1e1b4b, stop:1 #0f172a);
@@ -398,30 +511,33 @@ class MainWindow(QMainWindow):
         hero_layout = QVBoxLayout(hero)
 
         candidate_name = self.get_display_username()
-        self.hero_title = QLabel(f"Welcome back, {candidate_name}", hero)
+        self.hero_title = QLabel(f"Hi, {candidate_name}!", hero)
         self.hero_title.setStyleSheet("font-size: 22px; font-weight: 900; color: #ffffff;")
         hero_layout.addWidget(self.hero_title)
 
         hero_sub = QLabel(
-            "TRACE Desktop is synchronized with your native Linux environment. "
-            "Explore structured course syllabi, unlock new units with your Neurons reserve, "
-            "and strengthen memory via active recall testing.", hero
+            "Your personalized learning trail is ready. Continue a lesson, review your progress, "
+            "or start an active recall assessment.", hero
         )
         hero_sub.setStyleSheet("font-size: 13px; color: #c7d2fe; line-height: 1.4;")
         hero_sub.setWordWrap(True)
         hero_layout.addWidget(hero_sub)
         layout.addWidget(hero)
 
-        # Metrics Row
+        status_label = QLabel("Year 4 - Academic Candidate  •  Today’s learning plan", page)
+        status_label.setStyleSheet("font-size: 12px; color: #818cf8; font-weight: bold;")
+        layout.addWidget(status_label)
+
+        # Progress and activity row
         metrics_row = QHBoxLayout()
         balance = TraceRepository.get_wallet_balance()
         unlocked_count = len(TraceRepository.get_all_unlocked_unit_ids())
         cached_count = len(TraceRepository.get_cached_backend_units())
 
-        self.card_balance = self.create_metric_card("NEURONS BALANCE", f"{balance} N", "#fbbf24")
-        self.card_unlocked = self.create_metric_card("UNLOCKED UNITS", f"{unlocked_count} Active", "#34d399")
-        self.card_cloud = self.create_metric_card("CLOUD CACHE UNITS", f"{cached_count} Synced", "#38bdf8")
-        self.card_persistence = self.create_metric_card("LOCAL PERSISTENCE", "SQLite (XDG)", "#818cf8")
+        self.card_balance = self.create_metric_card("TRACE COINS", f"{balance} T", "#fbbf24")
+        self.card_unlocked = self.create_metric_card("CURRICULUM MASTERY", f"{unlocked_count} units", "#34d399")
+        self.card_cloud = self.create_metric_card("ASSESSMENTS", f"{len(TraceRepository.get_quiz_history())} complete", "#818cf8")
+        self.card_persistence = self.create_metric_card("SYNC STATUS", f"{cached_count} cached", "#38bdf8")
 
         metrics_row.addWidget(self.card_balance)
         metrics_row.addWidget(self.card_unlocked)
@@ -429,13 +545,47 @@ class MainWindow(QMainWindow):
         metrics_row.addWidget(self.card_persistence)
         layout.addLayout(metrics_row)
 
+        mastery_card = QFrame(page)
+        mastery_card.setStyleSheet("background-color: #0f172a; border: 1px solid #1e293b; border-radius: 18px;")
+        mastery_layout = QVBoxLayout(mastery_card)
+        mastery_layout.setContentsMargins(18, 16, 18, 16)
+        mastery_title = QLabel("Curriculum Mastery", mastery_card)
+        mastery_title.setStyleSheet("font-size: 15px; font-weight: 900; color: #ffffff;")
+        mastery_layout.addWidget(mastery_title)
+        mastery_subtitle = QLabel("Hierarchical progress across your active syllabus.", mastery_card)
+        mastery_subtitle.setStyleSheet("font-size: 11px; color: #94a3b8;")
+        mastery_layout.addWidget(mastery_subtitle)
+        mastery_rows = QHBoxLayout()
+        for label, value, color in (
+            ("Learnt", 33, "#6366f1"),
+            ("Quiz", 38, "#00e5ff"),
+            ("Topics", 33, "#f59e0b"),
+        ):
+            column = QVBoxLayout()
+            label_widget = QLabel(f"{label}  {value}%", mastery_card)
+            label_widget.setStyleSheet(f"font-size: 11px; font-weight: bold; color: {color};")
+            column.addWidget(label_widget)
+            progress = QProgressBar(mastery_card)
+            progress.setRange(0, 100)
+            progress.setValue(value)
+            progress.setTextVisible(False)
+            progress.setFixedHeight(7)
+            progress.setStyleSheet(
+                f"QProgressBar {{ background: #1e293b; border: none; border-radius: 4px; }}"
+                f"QProgressBar::chunk {{ background: {color}; border-radius: 4px; }}"
+            )
+            column.addWidget(progress)
+            mastery_rows.addLayout(column)
+        mastery_layout.addLayout(mastery_rows)
+        layout.addWidget(mastery_card)
+
         # Quick Actions
-        actions_label = QLabel("QUICK SATELLITE ACTIONS", page)
+        actions_label = QLabel("TODAY’S STUDY TRAIL", page)
         actions_label.setStyleSheet("font-size: 11px; font-weight: bold; color: #64748b; letter-spacing: 1px;")
         layout.addWidget(actions_label)
 
         action_btns = QHBoxLayout()
-        btn_open_syllabi = QPushButton("📚 Browse and Unlock Syllabi", page)
+        btn_open_syllabi = QPushButton("▣  Continue Learning", page)
         btn_open_syllabi.setStyleSheet("""
             QPushButton {
                 background-color: #4f46e5;
@@ -447,10 +597,10 @@ class MainWindow(QMainWindow):
             }
             QPushButton:hover { background-color: #4338ca; }
         """)
-        btn_open_syllabi.clicked.connect(lambda: [self.nav_buttons["syllabi"].setChecked(True), self.navigate_to("syllabi")])
+        btn_open_syllabi.clicked.connect(lambda: self.navigate_to("learn"))
         action_btns.addWidget(btn_open_syllabi)
 
-        btn_open_quiz = QPushButton("🎯 Start Active Recall Drill", page)
+        btn_open_quiz = QPushButton("◇  Take Assessment", page)
         btn_open_quiz.setStyleSheet("""
             QPushButton {
                 background-color: #059669;
@@ -465,7 +615,7 @@ class MainWindow(QMainWindow):
         btn_open_quiz.clicked.connect(lambda: [self.nav_buttons["assessment"].setChecked(True), self.navigate_to("assessment")])
         action_btns.addWidget(btn_open_quiz)
 
-        btn_topup = QPushButton("⚡ Top Up Neurons", page)
+        btn_topup = QPushButton("✦  Ask Socratic Assistant", page)
         btn_topup.setStyleSheet("""
             QPushButton {
                 background-color: #d97706;
@@ -477,10 +627,30 @@ class MainWindow(QMainWindow):
             }
             QPushButton:hover { background-color: #b45309; }
         """)
-        btn_topup.clicked.connect(self.wallet_badge.open_top_up_dialog)
+        btn_topup.clicked.connect(lambda: self.navigate_to("socratic"))
         action_btns.addWidget(btn_topup)
 
         layout.addLayout(action_btns)
+
+        activity_card = QFrame(page)
+        activity_card.setStyleSheet("background-color: #0f172a; border: 1px solid #1e293b; border-radius: 16px;")
+        activity_layout = QVBoxLayout(activity_card)
+        activity_layout.setContentsMargins(18, 16, 18, 16)
+        activity_title = QLabel("Today’s focus", activity_card)
+        activity_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #ffffff;")
+        activity_layout.addWidget(activity_title)
+        activity_text = QLabel("Review a saved highlight, complete one syllabus topic, then test your recall.", activity_card)
+        activity_text.setStyleSheet("font-size: 12px; color: #94a3b8;")
+        activity_text.setWordWrap(True)
+        activity_layout.addWidget(activity_text)
+        activity_buttons = QHBoxLayout()
+        for label, target in (("Saved Highlights", "bookmarks"), ("Syllabus Library", "syllabi"), ("Full Schedule", "schedule")):
+            button = QPushButton(label, activity_card)
+            button.clicked.connect(lambda checked=False, route=target: self.navigate_to(route))
+            activity_buttons.addWidget(button)
+        activity_layout.addLayout(activity_buttons)
+        layout.addWidget(activity_card)
+
         layout.addStretch()
         return page
 
@@ -490,7 +660,7 @@ class MainWindow(QMainWindow):
             balance = TraceRepository.get_wallet_balance()
             unlocked_count = len(TraceRepository.get_all_unlocked_unit_ids())
             cached_count = len(TraceRepository.get_cached_backend_units())
-            self.hero_title.setText(f"Welcome back, {self.get_display_username()}")
+            self.hero_title.setText(f"Hi, {self.get_display_username()}!")
             self.card_balance.findChild(QLabel, "metricValue").setText(f"{balance} N")
             self.card_unlocked.findChild(QLabel, "metricValue").setText(f"{unlocked_count} Active")
             self.card_cloud.findChild(QLabel, "metricValue").setText(f"{cached_count} Synced")

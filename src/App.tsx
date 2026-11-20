@@ -57,9 +57,6 @@ export const App: React.FC = () => {
     applyAppearance(getSavedAppearance());
   }, []);
 
-  // Preview Mode: 'mobile' (Android phone mockup preview) or 'responsive' (full-width)
-  const [previewMode, setPreviewMode] = useState<'mobile' | 'responsive'>('mobile');
-
   // Screen Routing
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [activeUnitId, setActiveUnitId] = useState<number>(1);
@@ -259,7 +256,7 @@ export const App: React.FC = () => {
   const handleLaunchQuiz = (unitName: string, topicName?: string) => {
     setQuizUnitName(unitName);
     setQuizTopicName(topicName || '');
-    setCurrentTab('quizzes');
+    setCurrentTab('assessment');
   };
 
   const handleToggleActiveUnit = (unitId: number, isActive: boolean) => {
@@ -361,8 +358,8 @@ export const App: React.FC = () => {
               setActiveUnitId(unitId);
               setCurrentTab('unit-outline');
             }}
-            onOpenConsultation={() => setCurrentTab('consultations')}
-            onOpenQuizzes={() => setCurrentTab('quizzes')}
+            onOpenConsultation={() => setCurrentTab('socratic')}
+            onOpenQuizzes={() => setCurrentTab('assessment')}
             onOpenTimetable={() => setCurrentTab('timetable')}
             onOpenLibrary={() => setCurrentTab('library')}
           />
@@ -378,7 +375,7 @@ export const App: React.FC = () => {
           />
         )}
 
-        {currentTab === 'quizzes' && (
+        {(currentTab === 'assessment' || currentTab === 'quizzes') && (
           <QuizInterface
             units={units}
             initialUnitName={quizUnitName}
@@ -387,7 +384,7 @@ export const App: React.FC = () => {
           />
         )}
 
-        {currentTab === 'consultations' && (
+        {(currentTab === 'socratic' || currentTab === 'consultations') && (
           <ChatInterface user={user} onOpenBrowser={(url) => setBrowserUrl(url ?? null)} />
         )}
 
@@ -398,7 +395,7 @@ export const App: React.FC = () => {
               const found = units.find((u) => u.unitName.toLowerCase() === name.toLowerCase());
               if (found) handleSelectUnitToLearn(found.id);
             }}
-            onOpenQuizzes={() => setCurrentTab('quizzes')}
+            onOpenQuizzes={() => setCurrentTab('assessment')}
           />
         )}
 
@@ -459,7 +456,7 @@ export const App: React.FC = () => {
               }
             }}
             onOpenBrowser={(url) => setBrowserUrl(url)}
-            onSelectTab={(tab) => setCurrentTab(tab)}
+            onSelectTab={(tab) => setCurrentTab(tab === 'quizzes' ? 'assessment' : tab)}
           />
         )}
 
@@ -468,11 +465,78 @@ export const App: React.FC = () => {
     );
   };
 
-  // App Content (Navigation, Header, Screen Content, Bottom Nav)
+  // App Content (responsive desktop rail, header, screen content, mobile nav)
   const appContent = (
-    <div className="flex flex-col h-full text-slate-100 bg-slate-950 font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div className="relative flex min-h-screen text-slate-100 bg-slate-950 font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
       <DynamicBackground />
 
+      <aside className="hidden md:flex md:w-64 lg:w-72 shrink-0 flex-col border-r border-slate-800/80 bg-slate-950/85 backdrop-blur-xl">
+        <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-800/80">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-black text-lg">
+            T
+          </div>
+          <div>
+            <p className="text-lg font-black tracking-tight text-white">Trace Learning</p>
+            <p className="text-[11px] font-semibold text-indigo-400">{user.username}'s workspace</p>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 py-5">
+          <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Learning trail</p>
+          <div className="space-y-1">
+            {[
+              { id: 'dashboard', label: 'Home Dashboard', icon: Home },
+              { id: 'socratic', label: 'Socratic Assistant', icon: MessageSquare },
+              { id: 'assessment', label: 'Assessment Center', icon: Sparkles },
+              { id: 'connect', label: 'Study Connect & Peers', icon: Users },
+              { id: 'timetable', label: 'Dynamic Schedule', icon: Calendar },
+              { id: 'library', label: 'Syllabus Library', icon: BookOpen },
+              { id: 'bookmarks', label: 'Saved Highlights', icon: Bookmark }
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setCurrentTab(id)}
+                className={`w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold transition-all ${
+                  currentTab === id
+                    ? 'bg-indigo-600/20 text-indigo-200 border border-indigo-500/30 shadow-lg shadow-indigo-950/20'
+                    : 'text-slate-400 hover:bg-slate-900 hover:text-white border border-transparent'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${currentTab === id ? 'text-indigo-400' : 'text-slate-500'}`} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+
+          <p className="px-3 mt-7 mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Workspace</p>
+          <button
+            onClick={() => setIsSyncOpen(true)}
+            className="w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"
+          >
+            <Settings className="w-4 h-4 text-slate-500" />
+            <span>Settings & Version</span>
+          </button>
+          <button
+            onClick={() => setIsAccountOpen(true)}
+            className="w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-slate-400 hover:bg-slate-900 hover:text-white transition-all"
+          >
+            <UserIcon className="w-4 h-4 text-slate-500" />
+            <span>Account profile</span>
+          </button>
+        </div>
+        <div className="border-t border-slate-800/80 p-4">
+          <div className="flex items-center gap-3 rounded-2xl bg-slate-900/80 border border-slate-800 p-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-200 font-black">
+              {user.username.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-white">{user.username}</p>
+              <p className="truncate text-[11px] text-slate-500">{user.semesterStatus}</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="relative flex min-w-0 flex-1 flex-col">
       {/* Navigation Drawer */}
       <NavigationDrawer
         isOpen={isDrawerOpen}
@@ -568,12 +632,14 @@ export const App: React.FC = () => {
       </header>
 
       {/* Main Scrollable View Area */}
-      <main className="flex-1 overflow-y-auto px-3.5 py-4 pb-20">
-        {renderMainScreen()}
+      <main className="flex-1 overflow-y-auto px-4 py-5 pb-24 md:px-8 md:py-8 md:pb-10">
+        <div className="mx-auto w-full max-w-[1500px]">
+          {renderMainScreen()}
+        </div>
       </main>
 
-      {/* Android Mobile Navigation Bar */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/90 py-1.5 px-3 flex items-center justify-around shadow-2xl">
+      {/* Android-style navigation remains the primary compact-window control */}
+      <nav className="fixed md:hidden bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/90 py-1.5 px-3 flex items-center justify-around shadow-2xl">
         <button
           onClick={() => setCurrentTab('dashboard')}
           className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all ${
@@ -599,9 +665,9 @@ export const App: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setCurrentTab('quizzes')}
+          onClick={() => setCurrentTab('assessment')}
           className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all ${
-            currentTab === 'quizzes'
+            currentTab === 'assessment' || currentTab === 'quizzes'
               ? 'text-indigo-400 font-bold'
               : 'text-slate-400 hover:text-slate-200 font-medium'
           }`}
@@ -611,9 +677,9 @@ export const App: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setCurrentTab('consultations')}
+          onClick={() => setCurrentTab('socratic')}
           className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all ${
-            currentTab === 'consultations'
+            currentTab === 'socratic' || currentTab === 'consultations'
               ? 'text-indigo-400 font-bold'
               : 'text-slate-400 hover:text-slate-200 font-medium'
           }`}
@@ -698,6 +764,7 @@ export const App: React.FC = () => {
           onSnapshotRestored={handleSnapshotRestored}
         />
       )}
+      </div>
     </div>
   );
 

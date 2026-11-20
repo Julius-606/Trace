@@ -492,6 +492,16 @@ class LearnView(QWidget):
         first_sub = SAMPLE_LEARN_CURRICULUM[0]["modules"][0]["topics"][0]["subtopics"][0]
         self.open_subtopic(first_sub, "CS101")
 
+    def select_subtopic_by_id(self, subtopic_id: str):
+        """Select a saved highlight's lesson in the curriculum tree."""
+        for unit in SAMPLE_LEARN_CURRICULUM:
+            for module in unit["modules"]:
+                for topic in module["topics"]:
+                    for subtopic in topic["subtopics"]:
+                        if str(subtopic.get("id")) == str(subtopic_id):
+                            self.open_subtopic(subtopic, unit["unit_id"])
+                            return
+
     def on_tree_item_clicked(self, item: QTreeWidgetItem, column: int):
         data = item.data(0, Qt.ItemDataRole.UserRole)
         if data and data[0] == "subtopic":

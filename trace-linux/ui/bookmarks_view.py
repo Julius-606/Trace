@@ -194,7 +194,7 @@ class BookmarksView(QWidget):
 
         # Header Bar
         header = QHBoxLayout()
-        header_title = QLabel("Saved Bookmarks and Clips", self)
+        header_title = QLabel("Saved Bookmarks & Clips", self)
         header_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #ffffff;")
         header.addWidget(header_title)
         header.addStretch()

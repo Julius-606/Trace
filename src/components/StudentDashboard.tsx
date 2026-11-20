@@ -72,6 +72,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   // Upcoming slot
   const nextSlot = timetable[0];
+  const currentDay = new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(new Date());
 
   const handleRefreshInsight = async () => {
     setRefreshingInsight(true);
@@ -102,33 +103,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Welcome Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-md">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-              Personalized Learning Matrix
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-            <span className="text-xs text-slate-400 font-medium">{user.semesterStatus}</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Welcome back, {user.username}
-          </h1>
-          <p className="text-sm text-slate-400 mt-1 max-w-xl">
-            Adaptive Socratic guidance, high-yield retrieval assessments, and dynamic clinical scheduling.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-2.5 text-center min-w-[100px]">
-            <span className="text-xs font-semibold text-slate-400 block">Avg PnL</span>
-            <span className="text-xl font-extrabold text-emerald-400">{avgPnl}%</span>
-          </div>
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-2.5 text-center min-w-[100px]">
-            <span className="text-xs font-semibold text-slate-400 block">Assessments</span>
-            <span className="text-xl font-extrabold text-indigo-400">{quizHistory.length}</span>
-          </div>
+      {/* Android StudentDashboard header */}
+      <div className="px-1 pt-1">
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">Hi, {user.username}!</h1>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="rounded-md bg-indigo-500/15 border border-indigo-500/25 px-2 py-1 text-[10px] font-bold text-indigo-300">
+            {user.semesterStatus}
+          </span>
+          <span className="text-[11px] text-slate-500">• {currentDay}</span>
+          <span className="text-[11px] text-emerald-400">• Online</span>
         </div>
       </div>
 
