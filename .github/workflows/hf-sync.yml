@@ -14,7 +14,7 @@ name: Sync Backend to Hugging Face Space
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "Backend-dedicated" ]
     # Optional: Only run this workflow if something in the backend actually changed
     paths:
       - 'backend/**'
