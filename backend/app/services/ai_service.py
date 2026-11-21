@@ -9,67 +9,63 @@ import random
 from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load deployment and local environment files explicitly. Hosted spaces keep
+# their injected variables, since load_dotenv does not override existing values.
+_env_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+for _env_path in (
+    os.path.join(_env_dir, ".env"),
+    os.path.join(_env_dir, "app", ".env"),
+):
+    if os.path.exists(_env_path):
+        load_dotenv(_env_path)
 
 logger = logging.getLogger("AI_SERVICE")
 
-GEMINI_API_KEYS = []
 
-# 1. Collect from GEMINI_API_KEY_i / GEMINI_API_KEY
-env_keys = []
+def _split_api_keys(value: str | None) -> list[str]:
+    if not value:
+        return []
+    # Values may be supplied by secrets as one key, comma-separated, or
+    # semicolon-separated. Ignore whitespace and duplicate entries.
+    import re
+    return [key for key in (part.strip() for part in re.split(r"[,;\n]", value)) if key]
+
+
+GEMINI_API_KEYS: list[str] = []
+
+# Support GEMINI_API_KEY, GEMINI_API_KEYS, and numbered GEMINI_API_KEY_1/N.
+for env_name in ("GEMINI_API_KEYS", "GEMINI_API_KEY"):
+    for key in _split_api_keys(os.getenv(env_name)):
+        if key not in GEMINI_API_KEYS:
+            GEMINI_API_KEYS.append(key)
+
 i = 1
 while True:
     key = os.getenv(f"GEMINI_API_KEY_{i}")
-    if not key:
+    if key is None:
         break
-    k = key.strip()
-    if k and k not in env_keys:
-        env_keys.append(k)
+    for parsed_key in _split_api_keys(key):
+        if parsed_key not in GEMINI_API_KEYS:
+            GEMINI_API_KEYS.append(parsed_key)
     i += 1
-
-if not env_keys:
-    key = os.getenv("GEMINI_API_KEY")
-    if key:
-        k = key.strip()
-        if k and k not in env_keys:
-            env_keys.append(k)
-
-# 2. Collect from GEMINI_API_KEYS (comma-separated list of plain keys: key1,key2,...)
-comma_keys = []
-comma_keys_str = os.getenv("GEMINI_API_KEYS")
-if comma_keys_str:
-    parts = comma_keys_str.split(",")
-    for part in parts:
-        pk = part.strip()
-        if pk and pk not in comma_keys:
-            comma_keys.append(pk)
-
-# Combine both sets
-for k in env_keys:
-    if k not in GEMINI_API_KEYS:
-        GEMINI_API_KEYS.append(k)
-
-for k in comma_keys:
-    if k not in GEMINI_API_KEYS:
-        GEMINI_API_KEYS.append(k)
-
-# If still empty, use fallback keys to prevent empty list errors
-if not GEMINI_API_KEYS:
-    GEMINI_API_KEYS = [
-        "AIzaSyDmvjVkFmt0RoTMNER8fYoIKfy7Pkw1sfo",
-        "AIzaSyDgvt1qfR_IG-UN__WcOPj1hv5s1IVUWHY"
-    ]
 
 class AiService:
     def __init__(self):
         self.key_index = 0
+        configured_model = os.getenv("GEMINI_MODEL", "").strip()
         self.model_variants = [
-            "gemini-flash-latest",
-            "gemini-2.5-flash",
+            configured_model,
             "gemini-flash-lite-latest",
+            "gemini-3.1-flash-lite",
             "gemini-2.5-flash-lite",
-            "gemini-2.0-flash-lite",
+            "gemini-flash-latest",
+        ] if configured_model else [
+            "gemini-flash-lite-latest",
+            "gemini-3.1-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemini-flash-latest",
         ]
+        self.model_variants = list(dict.fromkeys(self.model_variants))
         self.logs = []
 
         if GEMINI_API_KEYS:
@@ -79,7 +75,10 @@ class AiService:
 
     def _create_client(self):
         key = GEMINI_API_KEYS[self.key_index % len(GEMINI_API_KEYS)]
-        self.client = genai.Client(api_key=key)
+        self.client = genai.Client(
+            api_key=key,
+            http_options={"timeout": 30_000},
+        )
 
     def _rotate_key(self):
         if not GEMINI_API_KEYS: return
@@ -100,17 +99,22 @@ class AiService:
         if len(self.logs) > 50: self.logs.pop(0)
 
     def ask(self, prompt, system_instruction=None):
-        if not GEMINI_API_KEYS: return None
+        if not GEMINI_API_KEYS:
+            logger.error("GEMINI API key is not configured")
+            return None
 
         task_name = "Chat/General"
         for variant in self.model_variants:
-            for _ in range(len(GEMINI_API_KEYS)):
+            for key_attempt in range(len(GEMINI_API_KEYS)):
                 start_time = time.time()
                 current_key_idx = self.key_index % len(GEMINI_API_KEYS)
                 try:
-                    config = None
-                    if system_instruction:
-                        config = types.GenerateContentConfig(system_instruction=system_instruction)
+                    config = types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                    ) if system_instruction else types.GenerateContentConfig(
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                    )
 
                     response = self.client.models.generate_content(
                         model=variant,
@@ -127,15 +131,28 @@ class AiService:
                     err_msg = str(e).lower()
                     self._log_performance(variant, current_key_idx, duration, "FAILED", task_name)
 
-                    if "404" in err_msg:
-                        logger.warning(f"⚠️ Model {variant} not found. Trying next variant...")
+                    if "404" in err_msg or "not found" in err_msg or "no longer available" in err_msg:
+                        logger.warning(f"Model {variant} is unavailable. Trying next variant...")
                         break
 
+                    if "503" in err_msg or "504" in err_msg or "high demand" in err_msg:
+                        logger.warning(f"Model {variant} is temporarily unavailable. Retrying after delay...")
+                        time.sleep(2)
+                        # A provider 503 is not a key failure. Do not rotate keys for it.
+                        continue
+
+                    if "401" in err_msg or "403" in err_msg or "permission" in err_msg or "api key" in err_msg:
+                        logger.warning("Gemini rejected the current key. Rotating credentials...")
+                        self._rotate_key()
+                        time.sleep(1)
+                        continue
+
+                    logger.warning(f"Gemini request failed: {str(e)[:240]}")
                     self._rotate_key()
                     time.sleep(1)
                     continue
-        # Fallback response if AI model APIs are temporarily offline or unconfigured
-        return "AI service is currently unavailable."
+        logger.error("All configured Gemini models and keys failed")
+        return None
 
     def _fallback_quiz(self, unit_name, topic=None, learning_outcomes=None):
         topic_title = topic or "Clinical Core Principles"

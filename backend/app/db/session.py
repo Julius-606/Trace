@@ -7,14 +7,26 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 
 logger = logging.getLogger("trace_db")
-load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+_backend_dir = Path(__file__).resolve().parents[2]
+load_dotenv(_backend_dir / ".env")
+load_dotenv(_backend_dir / "app" / ".env")
 
 # Trace owns this database. Keep its local fallback separate from Orbit's vault.
-raw_db_url = os.getenv("TRACE_DATABASE_URL", "sqlite:///./edu_ai_vault.db")
+# Accept the canonical Trace name plus common Neon aliases for local and hosted deployments.
+raw_db_url = (
+    os.getenv("TRACE_DATABASE_URL")
+    or os.getenv("NEON_DATABASE_URL")
+    or os.getenv("DATABASE_URL")
+    or "sqlite:///./edu_ai_vault.db"
+)
 
-# Fix for Neon/Heroku: SQLAlchemy requires 'postgresql://' instead of 'postgres://'
+# Fix for Neon/Heroku and SQLAlchemy URL variants.
 if raw_db_url.startswith("postgres://"):
     raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
+if raw_db_url.startswith("postgresql+psycopg://"):
+    raw_db_url = raw_db_url.replace("postgresql+psycopg://", "postgresql://", 1)
+if raw_db_url.startswith("postgresql://"):
+    raw_db_url = raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 engine_args = {}
 
