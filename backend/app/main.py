@@ -206,6 +206,13 @@ try:
         except Exception as err:
             init_db.rollback()
 
+        # 10b. Purge legacy plaintext OTP codes — codes are never stored at rest anymore
+        try:
+            init_db.execute(text("UPDATE email_verification_otps SET otp = NULL WHERE otp IS NOT NULL;"))
+            init_db.commit()
+        except Exception as err:
+            init_db.rollback()
+
         # Seed initial release if table is empty
         try:
             existing_releases_count = init_db.query(models.SystemRelease).count()
@@ -1084,7 +1091,7 @@ async def handle_browser_signup(
 ):
     clean_email = email.strip().lower()
     display_name = (full_name or username or clean_email.split("@")[0]).strip()
-    
+
     existing_user = db.query(models.User).filter(
         (models.User.email == clean_email) | (models.User.username == display_name)
     ).first()
@@ -1107,6 +1114,7 @@ async def handle_browser_signup(
             status_code=400
         )
 
+
     # Verify password
     if len(password.strip()) < 6:
         return HTMLResponse(
@@ -1120,6 +1128,29 @@ async def handle_browser_signup(
                     <h2 class="text-xl font-bold text-white mb-2">Weak Password</h2>
                     <p class="text-slate-400 text-xs">Password must be at least 6 characters in length.</p>
                     <a href="/signup" class="mt-6 inline-block bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl">&larr; Try Again</a>
+                </div>
+            </body>
+            </html>
+            """,
+            status_code=400
+        )
+
+    # Verify the 6-digit email code BEFORE creating the account (single-use, consumed here).
+    # Done AFTER the duplicate and password checks so those failures never burn the code.
+    from app.core.otp_service import validate_otp
+    otp_ok, otp_err = validate_otp(db, clean_email, (otp or "").strip(), "signup", consume=True)
+    if not otp_ok:
+        return HTMLResponse(
+            f"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><title>Verification Required</title><script src="https://cdn.tailwindcss.com"></script></head>
+            <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4">
+                <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl">
+                    <div class="w-12 h-12 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center mx-auto text-xl font-bold mb-3">!</div>
+                    <h2 class="text-xl font-bold text-white mb-2">Verification Failed</h2>
+                    <p class="text-slate-400 text-xs">{otp_err or "The code you entered is invalid or has expired."}</p>
+                    <a href="/signup" class="mt-6 inline-block bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl">&larr; Return to Sign Up</a>
                 </div>
             </body>
             </html>
@@ -1145,7 +1176,7 @@ async def handle_browser_signup(
         course_pursued=course_pursued,
         referral_code=referral_code,
         semester_status=level_of_study or "Year 1",
-        is_email_verified=bool(otp),
+        is_email_verified=True,
         trace_coins=200
     )
     db.add(new_user)

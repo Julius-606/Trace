@@ -47,3 +47,16 @@ An adaptive, clinical and academic learning platform ported from the original An
    - Integrated reference browser with medical resource shortcuts.
    - Snapshot export, JSON import, and state backup engine.
    - Unit enrollment and archival management.
+
+
+## 📧 Public Signup & Email Verification
+
+Public enrollment is open. New users verify their email address with a 6-digit code (PBKDF2-hashed at rest, 10-minute single-use lifecycle, 60-second resend cooldown, brute-force lockout) before an account is created — on Android, on the `/signup` web portal, and via `/api/auth/signup`.
+
+Delivery uses generic SMTP so any provider works (Gmail App Passwords, Brevo, SendGrid, Resend, AWS SES, or local Mailpit for development). To enable it:
+
+1. Set `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` and `OTP_PEPPER_SECRET` (see `.env.example`, section 8).
+2. Validate delivery on the server: `cd backend && python scripts/test_smtp.py you@your-domain.com`.
+3. Full setup, provider matrix, and troubleshooting: **[docs/email-verification.md](docs/email-verification.md)**.
+
+Without `SMTP_HOST`, `/api/auth/send-otp` fails loudly with HTTP 503 instead of silently stranding signups. For offline development only, `ENABLE_DEV_OTP_BYPASS=true` accepts the code `123456` — never enable it in production.

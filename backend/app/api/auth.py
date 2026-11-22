@@ -1,12 +1,9 @@
 import os
 import time
-import random
 import logging
-import smtplib
 import httpx
-from typing import Optional, Dict, Tuple, Any
-from email.mime.text import MIMEText
-from fastapi import APIRouter, Depends, HTTPException, Form, Request, Response
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Form, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models import database_models as models
@@ -21,17 +18,15 @@ router = APIRouter(tags=["Authentication"])
 from app.core.otp_service import (
     generate_cryptographic_otp,
     hash_otp_token,
-    verify_otp_token,
     check_request_rate_limit,
     record_request_timestamp,
+    validate_otp,
+    dev_otp_bypass_enabled,
+    PENDING_OTPS,
     EmailDispatcher,
     OTP_EXPIRATION_SECONDS,
-    RESEND_COOLDOWN_SECONDS,
-    MAX_VERIFICATION_ATTEMPTS
+    RESEND_COOLDOWN_SECONDS
 )
-
-# Resilient in-memory cache for pending active OTP sessions: (email_lower, action) -> session metadata
-PENDING_OTPS: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
 
 @router.post("/send-otp", response_model=schemas.RequestOtpResponse)
@@ -80,32 +75,53 @@ async def request_verification_otp(request: schemas.RequestOtpRequest, db: Sessi
     now = time.time()
     expires_at = now + OTP_EXPIRATION_SECONDS  # 10 minutes strict maximum lifecycle
 
-    # 3. Store in fast in-memory active cache with attempt counter
-    cache_key = (clean_email, action)
-    PENDING_OTPS[cache_key] = {
-        "hashed_otp": hashed_otp,
-        "otp": otp,  # Maintained for local sandbox preview
-        "expires_at": expires_at,
-        "attempt_count": 0,
-        "verified": False
-    }
-
-    # Record rate limit trigger
+    # Record rate-limit trigger up-front so the mail path cannot be abused to
+    # bombard an inbox even when delivery fails.
     record_request_timestamp(clean_email)
+
+    # 3. Deliver via Transactional Email Dispatcher (generic SMTP). Fail LOUD:
+    #    if the email cannot be delivered, do NOT persist a code the user will never receive.
+    sent_live_smtp = EmailDispatcher.send_otp_email(clean_email, otp, action)
+
+    if not sent_live_smtp and not dev_otp_bypass_enabled():
+        try:
+            from app.api import admin
+            admin.notify_admin(
+                db=db,
+                category="SECURITY",
+                title=f"Auth OTP delivery FAILED: {action.upper()}",
+                message=f"Could not deliver a verification email to {clean_email} ({action}). SMTP delivery failed or is unconfigured.",
+                level="warning",
+                details=f"Email: {clean_email}\nAction: {action}\nHint: check SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM on the server."
+            )
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=503,
+            detail="We could not deliver the verification email right now. The issue has been logged. Please try again later."
+        )
 
     # 4. Invalidate any previous unverified tokens for this (email, action) in DB
     db.query(models.EmailVerificationOTP).filter(
         models.EmailVerificationOTP.email == clean_email,
         models.EmailVerificationOTP.action == action,
-        models.EmailVerificationOTP.is_used == False
+        models.EmailVerificationOTP.is_used == False  # noqa: E712
     ).update({"is_used": True})
 
-    # 5. Record new secure token hash in database ledger
+    # 5. Record new secure token hash in database ledger (hash only — never plaintext)
+    cache_key = (clean_email, action)
+    PENDING_OTPS[cache_key] = {
+        "hashed_otp": hashed_otp,
+        "expires_at": expires_at,
+        "attempt_count": 0,
+        "verified": False
+    }
+
     try:
         otp_record = models.EmailVerificationOTP(
             email=clean_email,
             hashed_otp=hashed_otp,
-            otp=otp,  # Accessible for preview/sandbox in development
+            otp=None,  # Never persist the plaintext code
             action=action,
             attempt_count=0,
             created_at=now,
@@ -117,9 +133,6 @@ async def request_verification_otp(request: schemas.RequestOtpRequest, db: Sessi
     except Exception as e:
         logger.error(f"Error persisting OTP record: {e}")
         db.rollback()
-
-    # 6. Deliver via Transactional Email Dispatcher
-    sent_live_smtp = EmailDispatcher.send_otp_email(clean_email, otp, action)
 
     # Admin Audit Notification
     try:
@@ -136,105 +149,41 @@ async def request_verification_otp(request: schemas.RequestOtpRequest, db: Sessi
         pass
 
     action_name = "Password reset" if action == "forgot_password" else "Verification"
-    note = " Verification code sent to your inbox." if sent_live_smtp else " Code generated and logged to secure ledger."
+    if sent_live_smtp:
+        note = " Verification code sent to your inbox."
+    else:
+        note = " Email delivery unavailable; development bypass code accepted instead."
     return {
         "status": "success",
         "message": f"{action_name} code generated for {clean_email}.{note}",
         "email": clean_email,
         "expires_in_seconds": OTP_EXPIRATION_SECONDS,
         "resend_cooldown_seconds": RESEND_COOLDOWN_SECONDS,
-        "otp_preview": otp
+        # The plaintext code is returned ONLY when the development escape hatch
+        # (ENABLE_DEV_OTP_BYPASS) is explicitly enabled. Never in production.
+        "otp_preview": otp if dev_otp_bypass_enabled() else None
     }
 
 
 @router.post("/verify-otp", response_model=schemas.VerifyOtpResponse)
 async def verify_otp(request: schemas.VerifyOtpRequest, db: Session = Depends(get_db)):
     """
-    Validates candidate OTP against cryptographic hash at rest.
-    Enforces maximum failure attempt limits (brute-force defense) and burns token immediately.
+    Non-destructive verification probe: proves possession of the code WITHOUT burning it,
+    so the completing action (signup / password reset) can still consume it afterwards.
+    Enforces maximum failure attempt limits (brute-force defense).
+
+    Note: single-use enforcement happens when the code is consumed by the completing
+    action (e.g. /signup, /forgot-password/reset).
     """
     clean_email = request.email.strip().lower()
     clean_otp = request.otp.strip()
     action = request.action.strip().lower()
-    now = time.time()
 
-    cache_key = (clean_email, action)
-    entry = PENDING_OTPS.get(cache_key)
-
-    # Lookup active database record
-    record = db.query(models.EmailVerificationOTP).filter(
-        models.EmailVerificationOTP.email == clean_email,
-        models.EmailVerificationOTP.action == action,
-        models.EmailVerificationOTP.is_used == False
-    ).order_by(models.EmailVerificationOTP.id.desc()).first()
-
-    if not record and not entry:
-        raise HTTPException(
-            status_code=400,
-            detail="No active verification code found for this email. Please request a new code."
-        )
-
-    # Check expiration
-    record_expires = record.expires_at if record else entry.get("expires_at", 0)
-    if record_expires < now:
-        if record:
-            record.is_used = True
-            db.commit()
-        if cache_key in PENDING_OTPS:
-            del PENDING_OTPS[cache_key]
-        raise HTTPException(
-            status_code=400,
-            detail="This verification code has expired (maximum 10 minutes). Please request a new code."
-        )
-
-    # Check brute-force attempts
-    current_attempts = (record.attempt_count if record else entry.get("attempt_count", 0)) + 1
-    if record:
-        record.attempt_count = current_attempts
-        db.commit()
-    if entry:
-        entry["attempt_count"] = current_attempts
-
-    if current_attempts > MAX_VERIFICATION_ATTEMPTS:
-        # Invalidate token due to excessive failed attempts
-        if record:
-            record.is_used = True
-            db.commit()
-        if cache_key in PENDING_OTPS:
-            del PENDING_OTPS[cache_key]
-        raise HTTPException(
-            status_code=429,
-            detail="Too many failed verification attempts. This code has been invalidated for security. Please request a new code."
-        )
-
-    # Constant-time comparison using cryptographic hash
-    is_valid = False
-
-    # Development sandbox bypass code
-    if clean_otp == "123456":
-        is_valid = True
-    elif record and record.hashed_otp:
-        is_valid = verify_otp_token(clean_email, clean_otp, record.hashed_otp)
-    elif record and record.otp:
-        is_valid = secrets.compare_digest(record.otp, clean_otp)
-    elif entry and entry.get("hashed_otp"):
-        is_valid = verify_otp_token(clean_email, clean_otp, entry["hashed_otp"])
-    elif entry and entry.get("otp"):
-        is_valid = secrets.compare_digest(entry["otp"], clean_otp)
-
+    is_valid, err = validate_otp(db, clean_email, clean_otp, action, consume=False)
     if not is_valid:
-        remaining_attempts = max(0, MAX_VERIFICATION_ATTEMPTS - current_attempts)
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid verification code. {remaining_attempts} attempt(s) remaining before code is locked."
-        )
-
-    # Single-use enforcement: Burn the token immediately upon success
-    if record:
-        record.is_used = True
-        db.commit()
-    if cache_key in PENDING_OTPS:
-        del PENDING_OTPS[cache_key]
+        detail = err or "Invalid verification code."
+        status = 429 if "invalidated" in detail else 400
+        raise HTTPException(status_code=status, detail=detail)
 
     # Generate ephemeral auth verification session token
     auth_token = security.create_access_token(
@@ -297,7 +246,8 @@ async def login(request: Request, db: Session = Depends(get_db)):
     if user:
         if security.verify_password(password, user.hashed_password):
             is_trace_authenticated = True
-        elif password in ["admin123", "student123", "teacher123", "parent123", "trace2026", "gluk2026", "password123"]:
+        elif dev_otp_bypass_enabled() and password in ["admin123", "student123", "teacher123", "parent123", "trace2026", "gluk2026", "password123"]:
+            # Development escape hatch only (ENABLE_DEV_OTP_BYPASS). Never honored in production.
             is_trace_authenticated = True
 
     if is_trace_authenticated and user:
@@ -381,43 +331,23 @@ async def api_json_signup(request: Request, db: Session = Depends(get_db)):
     if not clean_email or "@" not in clean_email:
         raise HTTPException(status_code=400, detail="Please enter a valid email address.")
 
-    # 1. Verify OTP
-    clean_otp = (user_in.otp or "").strip()
-    is_valid_otp = (clean_otp == "123456")
-    cache_key = (clean_email, "signup")
-
-    if cache_key in PENDING_OTPS:
-        entry = PENDING_OTPS[cache_key]
-        if (entry["otp"] == clean_otp or entry.get("verified")) and entry["expires_at"] > time.time():
-            is_valid_otp = True
-
-    if not is_valid_otp and clean_otp:
-        record = db.query(models.EmailVerificationOTP).filter(
-            models.EmailVerificationOTP.email == clean_email,
-            models.EmailVerificationOTP.otp == clean_otp,
-            models.EmailVerificationOTP.action == "signup",
-            models.EmailVerificationOTP.is_used == False,
-            models.EmailVerificationOTP.expires_at > time.time()
-        ).first()
-        if record:
-            is_valid_otp = True
-            record.is_used = True
-            db.commit()
-
-    if not is_valid_otp:
-        raise HTTPException(
-            status_code=400,
-            detail="Email verification required. Please click 'Send Code' and enter the 6-digit OTP sent to your email."
-        )
-
-    # 2. Verify Password Strength
+    # 1. Verify Password Strength (checked before consuming the OTP)
     if len(user_in.password.strip()) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
 
-    # 3. Check Duplicate Account
+    # 2. Check Duplicate Account (checked before consuming the OTP)
     existing_user = db.query(models.User).filter(models.User.email == clean_email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="An account with this email address already exists.")
+
+    # 3. Verify OTP (single-use; consumed only now that everything else checks out)
+    clean_otp = (user_in.otp or "").strip()
+    otp_ok, otp_err = validate_otp(db, clean_email, clean_otp, "signup", consume=True)
+    if not otp_ok:
+        raise HTTPException(
+            status_code=400,
+            detail=otp_err or "Email verification required. Please click 'Send Code' and enter the 6-digit OTP sent to your email."
+        )
 
     # Derive username
     candidate_username = (user_in.username or user_in.full_name or clean_email.split("@")[0]).strip()
@@ -498,30 +428,13 @@ async def forgot_password_reset(request: schemas.ForgotPasswordResetRequest, db:
     if not user:
         raise HTTPException(status_code=404, detail="No registered account found with this email address.")
 
-    # Validate OTP
-    is_valid_otp = (clean_otp == "123456")
-    cache_key = (clean_email, "forgot_password")
-    if cache_key in PENDING_OTPS:
-        entry = PENDING_OTPS[cache_key]
-        if (entry["otp"] == clean_otp or clean_otp == "123456") and entry["expires_at"] > time.time():
-            is_valid_otp = True
-            del PENDING_OTPS[cache_key]
-
-    if not is_valid_otp:
-        record = db.query(models.EmailVerificationOTP).filter(
-            models.EmailVerificationOTP.email == clean_email,
-            models.EmailVerificationOTP.otp == clean_otp,
-            models.EmailVerificationOTP.action == "forgot_password",
-            models.EmailVerificationOTP.is_used == False,
-            models.EmailVerificationOTP.expires_at > time.time()
-        ).first()
-        if record:
-            is_valid_otp = True
-            record.is_used = True
-            db.commit()
-
-    if not is_valid_otp:
-        raise HTTPException(status_code=400, detail="Invalid or expired reset code. Please check the code sent to your email or request a new one.")
+    # Validate OTP (single-use; consumed on success)
+    otp_ok, otp_err = validate_otp(db, clean_email, clean_otp, "forgot_password", consume=True)
+    if not otp_ok:
+        raise HTTPException(
+            status_code=400,
+            detail=otp_err or "Invalid or expired reset code. Please check the code sent to your email or request a new one."
+        )
 
     # Update password
     user.hashed_password = security.get_password_hash(request.new_password)
@@ -560,12 +473,23 @@ async def handle_signup(
     db: Session = Depends(get_db)
 ):
     clean_email = email.strip().lower()
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(status_code=400, detail="Please enter a valid email address.")
+
     existing_user = db.query(models.User).filter(models.User.email == clean_email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="An account with this email address already exists.")
 
     if len(password.strip()) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+
+    # Verify OTP (single-use; consumed only now that everything else checks out)
+    otp_ok, otp_err = validate_otp(db, clean_email, (otp or "").strip(), "signup", consume=True)
+    if not otp_ok:
+        raise HTTPException(
+            status_code=400,
+            detail=otp_err or "Email verification required. Please enter the 6-digit code sent to your email."
+        )
 
     candidate_username = (full_name or clean_email.split("@")[0]).strip()
     base_user = candidate_username
@@ -585,7 +509,7 @@ async def handle_signup(
         course_pursued=course_pursued,
         referral_code=referral_code,
         semester_status=level_of_study or "Year 1",
-        is_email_verified=bool(otp),
+        is_email_verified=True,
         trace_coins=200
     )
     db.add(new_user)

@@ -6,6 +6,7 @@ import android.content.Context
 import android.util.Log
 import com.example.edu_ai.BuildConfig
 import com.example.edu_ai.utils.PreferenceManager
+import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -13,6 +14,16 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+
+private fun buildTunnelUrl(original: HttpUrl, fallbackUrl: String): HttpUrl {
+    val fallback = HttpUrl.parse(fallbackUrl)
+        ?: return original.newBuilder().scheme("https").host("localhost").port(8001).build()
+    return original.newBuilder()
+        .scheme(fallback.scheme)
+        .host(fallback.host)
+        .port(fallback.port)
+        .build()
+}
 
 object RetrofitClient {
     private var currentBaseUrl = BuildConfig.BACKEND_BASE_URL
@@ -41,18 +52,14 @@ object RetrofitClient {
                             .host("10.0.2.2") // Loopback to host machine from Emulator
                             .port(8001)
                             .build()
-                    } else { // "ngrok"
-                        originalRequest.url.newBuilder()
-                            .scheme("https")
-                            .host("untropic-rozanne-noncomprehendingly.ngrok-free.dev")
-                            .port(443)
-                            .build()
+                    } else { // "ngrok" tunnel — configurable via fallbackBackendBaseUrl gradle property
+                        buildTunnelUrl(originalRequest.url, FALLBACK_URL)
                     }
-                    
+
                     val customRequest = originalRequest.newBuilder()
                         .url(customUrl)
                         .build()
-                    
+
                     return chain.proceed(customRequest)
                 }
             }
@@ -64,18 +71,14 @@ object RetrofitClient {
                 
                 if (currentBaseUrl != FALLBACK_URL) {
                     currentBaseUrl = FALLBACK_URL
-                    
-                    // Reconstruct request with fallback URL (Hugging Face / Ngrok as fallback)
-                    val newUrl = originalRequest.url.newBuilder()
-                        .scheme("https")
-                        .host("untropic-rozanne-noncomprehendingly.ngrok-free.dev")
-                        .port(443)
-                        .build()
-                    
+
+                    // Reconstruct request against the configured fallback backend
+                    val newUrl = buildTunnelUrl(originalRequest.url, FALLBACK_URL)
+
                     val newRequest = originalRequest.newBuilder()
                         .url(newUrl)
                         .build()
-                    
+
                     return chain.proceed(newRequest)
                 }
                 throw e
