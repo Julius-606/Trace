@@ -119,3 +119,16 @@ npm run dev
    cd backend
    python mock_app_test.py
    ```
+
+
+---
+
+## 📧 Email Verification for Public Signups
+
+The public signup flows (`/signup` web portal, Android in-app enrollment, `/api/auth/signup`) require a 6-digit email verification code. Configure generic SMTP in `.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, optionally `SMTP_USE_TLS`/`SMTP_USE_SSL`) and set `OTP_PEPPER_SECRET`. Then verify delivery on the deployed machine with:
+
+```bash
+cd backend && python scripts/test_smtp.py you@your-domain.com
+```
+
+Codes are hashed at rest, expire after 10 minutes, are single-use, and are rate-limited. See **[docs/email-verification.md](docs/email-verification.md)** for the provider matrix, local Mailpit setup, the `ENABLE_DEV_OTP_BYPASS` development escape hatch (default OFF), and troubleshooting.

@@ -27,15 +27,27 @@ def test_modular_api():
     print("\n--- Testing Modular API ---")
 
     # 0. Sign up / Prepare User
+    # NOTE: public signup now requires a verified email OTP. For this local smoke test,
+    # run the server with ENABLE_DEV_OTP_BYPASS=true so the fixed code "123456" is accepted.
     print("0. Preparing Test User...")
-    signup_data = {"username": "testuser", "email": "test@example.com", "password": "password123", "role": "Student"}
-    # The /api/auth/signup-form endpoint expects Form data
-    r = requests.post(f"{BASE_URL}/api/auth/signup-form", data=signup_data, headers={"X-Internal-Api-Key": "DEVELOPMENT_KEY"})
-    if r.status_code == 200 or (r.status_code == 400 and "already exists" in r.text):
-        print("✅ Test User is ready")
+    r_otp = requests.post(f"{BASE_URL}/api/auth/send-otp", json={"email": "test@example.com", "action": "signup"}, headers=HEADERS)
+    if r_otp.status_code == 400 and "already registered" in r_otp.text:
+        print("✅ Test User already exists")
+    elif r_otp.status_code == 200:
+        signup_data = {"username": "testuser", "email": "test@example.com", "password": "password123", "role": "Student", "otp": "123456"}
+        # The /api/auth/signup-form endpoint expects Form data
+        r = requests.post(f"{BASE_URL}/api/auth/signup-form", data=signup_data, headers={"X-Internal-Api-Key": "DEVELOPMENT_KEY"})
+        if r.status_code == 200 or (r.status_code == 400 and "already exists" in r.text):
+            print("✅ Test User is ready")
+        else:
+            print(f"❌ Signup Failed: {r.status_code}")
+            print(r.text)
+            print("Hint: start the server with ENABLE_DEV_OTP_BYPASS=true for local smoke tests.")
+            return
     else:
-        print(f"❌ Signup Failed: {r.status_code}")
-        print(r.text)
+        print(f"❌ OTP Request Failed: {r_otp.status_code}")
+        print(r_otp.text)
+        print("Hint: configure SMTP_* (see docs/email-verification.md) or set ENABLE_DEV_OTP_BYPASS=true for local dev.")
         return
 
     # 1. Login

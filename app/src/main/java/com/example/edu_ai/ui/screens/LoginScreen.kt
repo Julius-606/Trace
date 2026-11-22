@@ -39,6 +39,7 @@ import com.example.edu_ai.schemas.*
 import com.example.edu_ai.utils.PreferenceManager
 import com.example.edu_ai.utils.TactileFeedback
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.security.MessageDigest
 
 private fun hashPassword(password: String): String {
@@ -46,6 +47,27 @@ private fun hashPassword(password: String): String {
     val md = MessageDigest.getInstance("SHA-256")
     val digest = md.digest(bytes)
     return digest.fold("") { str, it -> str + "%02x".format(it) }
+}
+
+/** Human-friendly base URL for the configured backend gateway (web portal, fallback tunnel, or device loopback). */
+private fun webPortalBaseUrl(mode: String): String = when (mode) {
+    "ngrok" -> BuildConfig.FALLBACK_BACKEND_BASE_URL
+    "container" -> "http://10.0.2.2:8001/"
+    else -> BuildConfig.BACKEND_BASE_URL
+}
+
+/** Extracts the FastAPI `detail` message from an error response, falling back to a generic message. */
+private fun extractApiError(e: Exception, fallback: String): String {
+    if (e is retrofit2.HttpException) {
+        try {
+            val raw = e.response()?.errorBody()?.string()
+            val detail = raw?.let { org.json.JSONObject(it).optString("detail") }?.takeIf { it.isNotBlank() }
+            if (detail != null) return detail
+        } catch (_: Exception) {
+            // fall through to fallback
+        }
+    }
+    return e.message?.takeIf { it.isNotBlank() } ?: fallback
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,6 +112,19 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
     var isResettingPassword by remember { mutableStateOf(false) }
     var forgotOtpStatusMessage by remember { mutableStateOf<String?>(null) }
     var forgotErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Resend cooldown state (backend enforces a 60-second cooldown per email)
+    var signUpResendUntil by remember { mutableStateOf(0L) }
+    var forgotResendUntil by remember { mutableStateOf(0L) }
+    var cooldownClock by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            cooldownClock = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
+    val signUpCooldownSec = ((signUpResendUntil - cooldownClock) / 1000).coerceAtLeast(0).toInt()
+    val forgotCooldownSec = ((forgotResendUntil - cooldownClock) / 1000).coerceAtLeast(0).toInt()
 
     // General Screen State
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -198,11 +233,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                     Button(
                         onClick = {
                             TactileFeedback.triggerSubtleClick(context)
-                            val baseUrl = when (backendMode) {
-                                "ngrok" -> "https://untropic-rozanne-noncomprehendingly.ngrok-free.dev/"
-                                "container" -> "http://10.0.2.2:8001/"
-                                else -> BuildConfig.BACKEND_BASE_URL
-                            }
+                            val baseUrl = webPortalBaseUrl(backendMode)
                             val cleanBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
                             val signupUrl = cleanBase + "signup"
                             try {
@@ -479,11 +510,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                         OutlinedButton(
                             onClick = {
                                 TactileFeedback.triggerSubtleClick(context)
-                                val baseUrl = when (backendMode) {
-                                    "ngrok" -> "https://untropic-rozanne-noncomprehendingly.ngrok-free.dev/"
-                                    "container" -> "http://10.0.2.2:8001/"
-                                    else -> BuildConfig.BACKEND_BASE_URL
-                                }
+                                val baseUrl = webPortalBaseUrl(backendMode)
                                 val cleanBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
                                 val signupUrl = cleanBase + "signup"
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(signupUrl))
@@ -533,11 +560,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                             TextButton(
                                 onClick = {
                                     TactileFeedback.triggerSubtleClick(context)
-                                    val baseUrl = when (backendMode) {
-                                        "ngrok" -> "https://untropic-rozanne-noncomprehendingly.ngrok-free.dev/"
-                                        "container" -> "http://10.0.2.2:8001/"
-                                        else -> BuildConfig.BACKEND_BASE_URL
-                                    }
+                                    val baseUrl = webPortalBaseUrl(backendMode)
                                     val cleanBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
                                     val signupUrl = cleanBase + "signup"
                                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(signupUrl))
@@ -561,7 +584,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                                 Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "Registration is actively available on the web portal. You can also test this in-app enrollment preview.",
+                                    "Public enrollment is open. Complete the form below — we will email a 6-digit verification code to confirm your address before your account is created.",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -618,29 +641,32 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                                         } else {
                                             isSendingSignUpOtp = true
                                             errorMessage = null
-                                            signUpOtpStatusMessage = "Dispatching OTP code to $clean..."
+                                            signUpOtpStatusMessage = "Sending verification code to $clean..."
                                             scope.launch {
                                                 try {
                                                     val res = RetrofitClient.instance.sendOtp(
                                                         SendOtpRequest(email = clean, action = "signup")
                                                     )
                                                     isSignUpOtpSentSuccess = true
-                                                    signUpOtpStatusMessage = res.message + (res.otpPreview?.let { " [Code: $it]" } ?: "")
+                                                    signUpOtpStatusMessage = res.message
+                                                    // Development builds only: the server returns otp_preview when ENABLE_DEV_OTP_BYPASS is enabled.
                                                     if (!res.otpPreview.isNullOrBlank()) {
                                                         signUpOtp = res.otpPreview
                                                     }
+                                                    signUpResendUntil = System.currentTimeMillis() + 60_000
                                                     TactileFeedback.triggerSuccess(context)
                                                 } catch (e: Exception) {
                                                     isSignUpOtpSentSuccess = false
-                                                    signUpOtpStatusMessage = "Failed to send OTP: ${e.message}"
-                                                    errorMessage = e.message
+                                                    val detail = extractApiError(e, "Could not send verification code. Please try again.")
+                                                    signUpOtpStatusMessage = detail
+                                                    errorMessage = detail
                                                 } finally {
                                                     isSendingSignUpOtp = false
                                                 }
                                             }
                                         }
                                     },
-                                    enabled = !isSendingSignUpOtp,
+                                    enabled = !isSendingSignUpOtp && signUpCooldownSec == 0,
                                     shape = RoundedCornerShape(14.dp),
                                     modifier = Modifier
                                         .height(56.dp)
@@ -655,7 +681,11 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                                     } else {
                                         Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(14.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text(if (isSignUpOtpSentSuccess) "Resend" else "Send OTP", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            if (signUpCooldownSec > 0) "Wait ${signUpCooldownSec}s" else if (isSignUpOtpSentSuccess) "Resend" else "Send OTP",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
                                 }
                             }
@@ -674,7 +704,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                                 value = signUpOtp,
                                 onValueChange = { if (it.length <= 6) signUpOtp = it },
                                 label = { Text("Enter 6-Digit Email Code") },
-                                placeholder = { Text("123456") },
+                                placeholder = { Text("e.g. 849201") },
                                 leadingIcon = {
                                     Icon(Icons.Default.Key, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                                 },
@@ -866,7 +896,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                                             TactileFeedback.triggerSuccess(context)
                                             onLoginSuccess(res.role, res.userId)
                                         } catch (e: Exception) {
-                                            errorMessage = "Enrollment error: ${e.message}"
+                                            errorMessage = extractApiError(e, "Enrollment failed. Please try again.")
                                         } finally {
                                             isLoading = false
                                         }
@@ -895,12 +925,9 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
             // Browser Signup Link
             TextButton(
                 onClick = {
-                    val baseUrl = when (backendMode) {
-                        "ngrok" -> "https://untropic-rozanne-noncomprehendingly.ngrok-free.dev/"
-                        "container" -> "http://10.0.2.2:8001/"
-                        else -> BuildConfig.BACKEND_BASE_URL
-                    }
-                    val signupUrl = baseUrl + "signup"
+                    val baseUrl = webPortalBaseUrl(backendMode)
+                    val cleanBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+                    val signupUrl = cleanBase + "signup"
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(signupUrl))
                     context.startActivity(intent)
                 }
@@ -1023,13 +1050,15 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                                             val res = RetrofitClient.instance.sendOtp(
                                                 SendOtpRequest(email = clean, action = "forgot_password")
                                             )
-                                            forgotOtpStatusMessage = res.message + (res.otpPreview?.let { " [Code: $it]" } ?: "")
+                                            forgotOtpStatusMessage = res.message
+                                            // Development builds only: the server returns otp_preview when ENABLE_DEV_OTP_BYPASS is enabled.
                                             if (!res.otpPreview.isNullOrBlank()) {
                                                 forgotOtp = res.otpPreview
                                             }
+                                            forgotResendUntil = System.currentTimeMillis() + 60_000
                                             TactileFeedback.triggerSuccess(context)
                                         } catch (e: Exception) {
-                                            forgotErrorMessage = e.message ?: "Failed to dispatch reset code."
+                                            forgotErrorMessage = extractApiError(e, "Could not dispatch reset code. Please try again.")
                                             forgotOtpStatusMessage = null
                                         } finally {
                                             isSendingForgotOtp = false
@@ -1037,7 +1066,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                                     }
                                 }
                             },
-                            enabled = !isSendingForgotOtp,
+                            enabled = !isSendingForgotOtp && forgotCooldownSec == 0,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .height(56.dp)
@@ -1046,7 +1075,11 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                             if (isSendingForgotOtp) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else {
-                                Text("Send OTP", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (forgotCooldownSec > 0) "Wait ${forgotCooldownSec}s" else "Send OTP",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
@@ -1065,7 +1098,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                         value = forgotOtp,
                         onValueChange = { if (it.length <= 6) forgotOtp = it },
                         label = { Text("6-Digit Verification Code") },
-                        placeholder = { Text("123456") },
+                        placeholder = { Text("e.g. 849201") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         shape = RoundedCornerShape(12.dp),
@@ -1139,7 +1172,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
                                     showForgotPasswordDialog = false
                                     TactileFeedback.triggerSuccess(context)
                                 } catch (e: Exception) {
-                                    forgotErrorMessage = e.message ?: "Failed to reset password."
+                                    forgotErrorMessage = extractApiError(e, "Failed to reset password. Please try again.")
                                 } finally {
                                     isResettingPassword = false
                                 }
