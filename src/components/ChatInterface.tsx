@@ -123,7 +123,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onOpenBrowse
           history: mappedHistory
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.detail || `AI request failed (${res.status})`);
+      }
+
+      if (!data.response) {
+        throw new Error('The AI service returned an empty response');
+      }
 
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,

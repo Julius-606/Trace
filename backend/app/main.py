@@ -12,10 +12,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("trace_backend")
 
-# Load .env BEFORE any other app imports to ensure environment variables are available
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+# Load deployment/local environment files before app imports. Existing process
+# environment variables (for example Hugging Face secrets) take precedence.
+_backend_dir = Path(__file__).resolve().parents[1]
+load_dotenv(_backend_dir / ".env")
+load_dotenv(_backend_dir / "app" / ".env")
 
 from fastapi import FastAPI, Request, Depends, Form, HTTPException
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -263,7 +267,29 @@ try:
 except Exception as e:
     logger.warning(f"Initial schema migration or admin setup warning: {e}. Tables will initialize on request if needed.")
 
-app = FastAPI(title="Trace Modular API", version="3.0.0")
+app = FastAPI(
+    title="Trace Modular API",
+    version="3.0.0",
+    docs_url=None,
+    redoc_url=None,
+)
+
+
+@app.get("/docs", include_in_schema=False)
+async def protected_swagger_ui(request: Request, db: Session = Depends(get_db)):
+    if not admin.is_authenticated_admin(request, db):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} - Swagger UI",
+    )
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def protected_openapi(request: Request, db: Session = Depends(get_db)):
+    if not admin.is_authenticated_admin(request, db):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    return app.openapi()
 
 
 @app.on_event("startup")
@@ -921,7 +947,8 @@ def health_check():
     return {
         "status": "healthy",
         "service": "Trace FastAPI Backend",
-        "hasGeminiKey": bool(os.environ.get("GEMINI_API_KEY"))
+        "hasGeminiKey": bool(os.environ.get("GEMINI_API_KEY")),
+        "database": "Neon PostgreSQL" if "postgres" in str(engine.url) else "SQLite Vault"
     }
 
 # Public Homepage (Inspiring, Welcoming, Quotes of the Day, Architecture Tour)

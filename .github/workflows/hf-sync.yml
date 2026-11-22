@@ -1,54 +1,61 @@
-
 ################################################################################
 # FILE: .github/workflows/hf-sync.yml
-# VERSION: 1.0.0 | SYSTEM: Hugging Face CI/CD Bot
+# VERSION: 1.1.0 | SYSTEM: Hugging Face CI/CD Bot
 ################################################################################
-#
-# HOW IT WORKS:
-# This acts as an automated "Expert Advisor" (EA). 
-# Every time you push code to the 'main' branch, it checks if the 'backend' folder changed.
-# If yes, it creates a temporary git repo inside the 'backend' folder and force-pushes
-# ONLY that folder to Hugging Face Spaces. Zero drawdown deployment! 🚀
 
 name: Sync Backend to Hugging Face Space
 
 on:
   push:
+<<<<<<< HEAD
     branches: [ "Backend-dedicated" ]
     # Optional: Only run this workflow if something in the backend actually changed
+=======
+    branches:
+      - main
+      - Backend-dedicated
+>>>>>>> Backend-dedicated
     paths:
-      - 'backend/**'
-  
-  # Allows you to run this workflow manually from the Actions tab
+      - "backend/**"
+      - ".github/workflows/hf-sync.yml"
+
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0 # Fetch all history for all branches and tags
 
-      - name: Push ONLY Backend to HF Spaces
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push backend only to Hugging Face Space
         env:
-          # We will set this secret up in GitHub next
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          
-          # ⚠️ EDIT THESE VARIABLES BEFORE PUSHING ⚠️
-          HF_USERNAME: "Agent606"
-          HF_SPACE_NAME: "Trace"
+          HF_USERNAME: Agent606
+          HF_SPACE_NAME: Trace
         run: |
-          echo "🪐 Booting up the Orbit Deployment EA..."
-          
-          # Move into the backend folder so it becomes the "root"
+          set -euo pipefail
+
+          if [ -z "${HF_TOKEN}" ]; then
+            echo "HF_TOKEN is not configured in repository secrets." >&2
+            exit 1
+          fi
+
+          SOURCE_BRANCH="${GITHUB_REF_NAME}"
+          SOURCE_SHA="${GITHUB_SHA}"
+
           cd backend
-          
-          # Initialize a fresh, temporary git repository just for this deployment
+
           git init
           git config user.name "Orbit Automations"
           git config user.email "bot@orbit.local"
+<<<<<<< HEAD
           
           # Stage all backend files (including the Dockerfile and README.md)
           git add .
@@ -59,6 +66,17 @@ jobs:
           git push --force https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME HEAD:main
           
           echo "📈 Take Profit Hit! Backend deployed successfully to Hugging Face."
+=======
+>>>>>>> Backend-dedicated
 
+          git add -A
+          git commit -m "Auto-sync ${SOURCE_BRANCH} ${SOURCE_SHA}" --allow-empty
 
+<<<<<<< HEAD
  
+=======
+          HF_REMOTE="https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}"
+          git push --force "${HF_REMOTE}" HEAD:main
+
+          echo "Backend deployed to Hugging Face from ${SOURCE_BRANCH} (${SOURCE_SHA})."
+>>>>>>> Backend-dedicated
