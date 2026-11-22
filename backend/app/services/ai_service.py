@@ -12,13 +12,13 @@ import json
 import os
 import random
 from datetime import datetime
-<<<<<<< HEAD
+#<<<<<<< HEAD
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
-=======
+#=======
 from dotenv import load_dotenv
 
 # Load deployment and local environment files explicitly. Hosted spaces keep
@@ -30,7 +30,7 @@ for _env_path in (
 ):
     if os.path.exists(_env_path):
         load_dotenv(_env_path)
->>>>>>> Backend-dedicated
+#>>>>>>> Backend-dedicated
 
 logger = logging.getLogger("AI_SERVICE")
 
@@ -91,18 +91,18 @@ class AiService:
             self.client = None
             return
         key = GEMINI_API_KEYS[self.key_index % len(GEMINI_API_KEYS)]
-<<<<<<< HEAD
+##<<<<<<< HEAD
         try:
             self.client = genai.Client(api_key=key)
         except Exception as e:
             logger.warning(f"Failed to initialize GenAI client: {e}")
             self.client = None
-=======
+##=======
         self.client = genai.Client(
             api_key=key,
             http_options={"timeout": 30_000},
         )
->>>>>>> Backend-dedicated
+#>>>>>>> Backend-dedicated
 
     def _rotate_key(self):
         if not GEMINI_API_KEYS: return
@@ -123,13 +123,13 @@ class AiService:
         if len(self.logs) > 50: self.logs.pop(0)
 
     def ask(self, prompt, system_instruction=None):
-<<<<<<< HEAD
+#S<##<<<<<< HEAD
         if not GEMINI_API_KEYS or not self.client: return None
-=======
+#=======
         if not GEMINI_API_KEYS:
             logger.error("GEMINI API key is not configured")
             return None
->>>>>>> Backend-dedicated
+#>>>>>>> Backend-dedicated
 
         task_name = "Chat/General"
         for variant in self.model_variants:

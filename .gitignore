@@ -37,6 +37,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Android and Gradle build output
+Archives/
 .gradle/
 build/
 captures/
@@ -58,7 +59,6 @@ edu_ai_vault.db
 .DS_Store
 Thumbs.db
 
-
 # Logs and temporary files
 *.log
 logs.txt
@@ -70,6 +70,13 @@ logs.txt
 gradle.properties
 *.hprof
 Trace_backend_SNAPSHOT.txt
-./data
-vault.db
+backend/Adopted/git 
+data/Archives/Trace_02807e9.apk
+Archives/Trace_02807e9.apk
+.gitignore
+data/Archives/Trace_e5363e1.apk
+data/Archives/base.apk
 orbit_vault.db
+vault.db
+Adopted/
+Adopted/SSS
